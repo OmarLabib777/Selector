@@ -5462,7 +5462,13 @@ function sjStorageTab(){
     </div>
   </div>
 
-  ${selProds.length>=2 ? sjCompatMatrix(selProds) : `
+  ${selProds.length>=2 ? `
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button onclick="sjPrint()" style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:linear-gradient(135deg,#003057,#005DAA);border:none;border-radius:10px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,93,170,.35);-webkit-tap-highlight-color:transparent">
+      <i class="ti ti-printer" style="font-size:15px"></i>Print / Save PDF
+    </button>
+  </div>
+  ${sjCompatMatrix(selProds)}` : `
   <div style="background:var(--bg3);border-radius:10px;padding:14px;text-align:center">
     <i class="ti ti-plus-circle" style="font-size:20px;color:var(--text3);margin-bottom:5px"></i>
     <div style="font-size:11px;color:var(--text3)">Add one more product to see compatibility.</div>
@@ -5475,178 +5481,141 @@ function sjStorageTab(){
 
 function sjStorageRoom(prods){
   if(prods.length<2) return '';
-
-  // Official 4+1 zone system — Wilhelmsen Storage & Safe Handling Poster
-  const ZONE_CFG = {
-    z1:{id:'z1', num:'1', title:'ACID AREA',     groups:['A','E'], col:'#C8102E', bg:'#FDEAED', light:'#FFF5F5'},
-    z2:{id:'z2', num:'2', title:'ALKALINE AREA', groups:['B','F'], col:'#1565C0', bg:'#E3F2FD', light:'#F0F6FF'},
-    z3:{id:'z3', num:'3', title:'SOLVENT AREA',  groups:['C','G'], col:'#7B3F00', bg:'#FBE8D5', light:'#FFF8F0'},
-    z4:{id:'z4', num:'4', title:'LOW HAZARD',    groups:['D'],     col:'#155D32', bg:'#E8F5E9', light:'#F2FBF4'},
-    z5:{id:'z5', num:'5', title:'OXIDISING',     groups:['H'],     col:'#7A5200', bg:'#FFF8E1', light:'#FFFDE8'}
+  const ZCFG={
+    z1:{id:'z1',num:'1',title:'ACID AREA',    col:'#C8102E',light:'#FFF5F5',tc:'#8B0000'},
+    z2:{id:'z2',num:'2',title:'ALKALINE AREA',col:'#1565C0',light:'#F0F6FF',tc:'#0D47A1'},
+    z3:{id:'z3',num:'3',title:'SOLVENT AREA', col:'#7B3F00',light:'#FFF8F0',tc:'#5D2E00'},
+    z4:{id:'z4',num:'4',title:'LOW HAZARD',   col:'#155D32',light:'#F2FBF4',tc:'#0A3D1A'},
+    z5:{id:'z5',num:'5',title:'OXIDISING',    col:'#7A5200',light:'#FFFDE8',tc:'#5A3A00'}
   };
-  const GROUP_ZONE = {A:'z1',B:'z2',C:'z3',D:'z4',E:'z1',F:'z2',G:'z3',H:'z5'};
-
-  // Zone compatibility (worst-case of member group pairs)
-  const ZC = {z1:{z1:'+',z2:'X',z3:'X',z4:'O',z5:'X'},z2:{z1:'X',z2:'+',z3:'X',z4:'O',z5:'O'},
-              z3:{z1:'X',z2:'X',z3:'+',z4:'O',z5:'X'},z4:{z1:'O',z2:'O',z3:'O',z4:'+',z5:'O'},
-              z5:{z1:'X',z2:'O',z3:'X',z4:'O',z5:'O'}};
-  function zc(a,b){return (ZC[a]&&ZC[a][b])||'+';}
-
-  // Zone compat explanations
-  const ZCI = {
-    'z1|z2':'KEY RULE: Acids + Alkalines must NEVER be stored together. Violent reaction risk.',
-    'z1|z3':'Acid + Solvent — incompatible dual hazards. Separate zones required.',
-    'z1|z5':'⚠ CRITICAL: Acid + Oxidising agent releases TOXIC CHLORINE GAS.',
-    'z2|z3':'Alkaline + Solvent — incompatible. Alkaline can saponify solvents.',
-    'z3|z5':'Solvent + Oxidising agent — serious FIRE risk.',
-    'z2|z5':'Alkaline + Oxidising: use caution and secondary containment.',
-    'z1|z4':'Low hazard goods: keep separate from corrosive bays. Do not stack above.',
-    'z2|z4':'Low hazard goods: keep separate from corrosive bays. Do not stack above.',
-    'z3|z4':'Low hazard goods: separate housekeeping shelves away from solvent area.',
-    'z4|z5':'Keep low-hazard goods away from direct contact with oxidising agents.'
-  };
-  function zci(a,b){return ZCI[a+'|'+b]||ZCI[b+'|'+a]||'';}
-
-  // Group products by zone
-  const zoneProds={};
-  prods.forEach(p=>{
-    const z=GROUP_ZONE[p.sg]||'z4';
-    if(!zoneProds[z])zoneProds[z]=[];
-    zoneProds[z].push(p);
-  });
-  const activeZIds=Object.keys(zoneProds);
-  if(!activeZIds.length)return '';
-
-  const n=activeZIds.length;
-  const cols=n<=3?n:Math.ceil(Math.sqrt(n));
-  const rows=Math.ceil(n/cols);
-  const W=390,H=260,M=22,IW=W-2*M,IH=H-2*M;
-  const ZW=IW/cols,ZH=IH/rows;
-
-  // Assign grid positions (try to place incompatible zones non-adjacent — greedy)
-  function zScore(a,b){const c=zc(a,b);return c==='+'?2:c==='O'?1:0;}
-  const orderedZIds=(function(){
-    if(activeZIds.length<=1)return activeZIds;
-    let best=null,bestT=-1;
-    activeZIds.forEach(start=>{
-      let ord=[start],rem=activeZIds.filter(z=>z!==start);
-      while(rem.length){
-        const last=ord[ord.length-1];let bi=0;
-        rem.forEach((z,i)=>{if(zScore(last,z)>zScore(last,rem[bi]))bi=i;});
-        ord.push(rem[bi]);rem.splice(bi,1);
-      }
-      const tot=ord.slice(0,-1).reduce((sum,z,i)=>sum+zScore(z,ord[i+1]),0);
-      if(tot>bestT){bestT=tot;best=ord;}
+  const GZ={A:'z1',B:'z2',C:'z3',D:'z4',E:'z1',F:'z2',G:'z3',H:'z5'};
+  const ZM={z1:{z1:'+',z2:'X',z3:'X',z4:'O',z5:'X'},z2:{z1:'X',z2:'+',z3:'X',z4:'O',z5:'O'},
+    z3:{z1:'X',z2:'X',z3:'+',z4:'O',z5:'X'},z4:{z1:'O',z2:'O',z3:'O',z4:'+',z5:'O'},
+    z5:{z1:'X',z2:'O',z3:'X',z4:'O',z5:'O'}};
+  function zcmp(a,b){return (ZM[a]&&ZM[a][b])||'+';}
+  const zpMap={};
+  prods.forEach(p=>{const z=GZ[p.sg]||'z4';if(!zpMap[z])zpMap[z]=[];zpMap[z].push(p);});
+  const zids=Object.keys(zpMap);
+  if(!zids.length)return '';
+  function zs(a,b){const c=zcmp(a,b);return c==='+'?2:c==='O'?1:0;}
+  const ordZ=(function(){
+    if(zids.length<=1)return zids;
+    let best=null,bT=-1;
+    zids.forEach(s=>{
+      let o=[s],r=zids.filter(z=>z!==s);
+      while(r.length){const l=o[o.length-1];let bi=0;r.forEach((z,i)=>{if(zs(l,z)>zs(l,r[bi]))bi=i;});o.push(r[bi]);r.splice(bi,1);}
+      const t=o.slice(0,-1).reduce((sum,z,i)=>sum+zs(z,o[i+1]),0);
+      if(t>bT){bT=t;best=o;}
     });
     return best;
   })();
-
-  const zones=orderedZIds.map((zid,i)=>({
-    ...ZONE_CFG[zid], col2:i, row2:Math.floor(i/cols), prds:zoneProds[zid]
-  }));
-  // Fix grid assignment
-  zones.forEach((z,i)=>{z.col2=i%cols;z.row2=Math.floor(i/cols);});
-
-  let s=`<svg viewBox="0 0 ${W} ${H+22}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;border-radius:8px">`;
-  s+=`<rect width="${W}" height="${H+22}" fill="#DDE3EC"/>`;
-  s+=`<text x="${W/2}" y="13" text-anchor="middle" font-size="7.5" font-weight="700" fill="#4A5568" letter-spacing="1.3" font-family="Arial,sans-serif">CHEMICAL STORAGE — OFFICIAL ZONE LAYOUT (WILHELMSEN)</text>`;
-
-  // Room floor
-  s+=`<defs><pattern id="hw" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#B0B8C8" stroke-width="2"/></pattern></defs>`;
-  s+=`<rect x="${M-9}" y="${M-9}" width="${IW+18}" height="${IH+9}" fill="url(#hw)" rx="5"/>`;
-  s+=`<rect x="${M}" y="${M}" width="${IW}" height="${IH}" fill="#F8F7F2" stroke="#2D3748" stroke-width="2" rx="4"/>`;
-
-  zones.forEach(z=>{
-    const x=M+z.col2*ZW,y=M+z.row2*ZH,P=3;
-    const zW=ZW-2*P,zH=ZH-2*P;
-    // Zone fill
-    s+=`<rect x="${x+P}" y="${y+P}" width="${zW}" height="${zH}" fill="${z.light}" stroke="${z.col}" stroke-width="1.5" rx="4"/>`;
-    // Zone header — two-line
-    const hh=22;
-    s+=`<rect x="${x+P}" y="${y+P}" width="${zW}" height="${hh}" fill="${z.col}" rx="4"/>`;
-    s+=`<rect x="${x+P}" y="${y+P+hh-4}" width="${zW}" height="4" fill="${z.col}"/>`;
-    s+=`<text x="${x+P+zW/2}" y="${y+P+9}" text-anchor="middle" font-size="7" font-weight="700" fill="rgba(255,255,255,.75)" font-family="Arial,sans-serif">ZONE ${z.num}</text>`;
-    s+=`<text x="${x+P+zW/2}" y="${y+P+19}" text-anchor="middle" font-size="7.5" font-weight="900" fill="white" font-family="Arial,sans-serif">${z.title}</text>`;
-
-    // Sub-group labels (which groups A-H are in this zone)
-    const grpsPresent=[...new Set(z.prds.map(p=>p.sg))];
-    const glbls=grpsPresent.map(g=>`Grp ${g}`).join(' + ');
-    s+=`<text x="${x+P+zW/2}" y="${y+P+hh+9}" text-anchor="middle" font-size="7" fill="${z.col}" font-weight="700" font-family="Arial,sans-serif">${glbls}</text>`;
-
-    // Shelf line
-    s+=`<line x1="${x+P+4}" y1="${y+P+zH-10}" x2="${x+P+zW-4}" y2="${y+P+zH-10}" stroke="${z.col}" stroke-width="0.7" opacity="0.3"/>`;
-
-    // Drum icons (top-view circles with product abbreviation)
-    const dR=7,dSX=16,dSY=15,dpr=Math.max(1,Math.floor((zW-10)/dSX));
-    const dsx=x+P+8,dsy=y+P+hh+12;
-    z.prds.slice(0,10).forEach((p,i)=>{
-      const dc=i%dpr,dr=Math.floor(i/dpr);
-      const dx=dsx+dc*dSX,dy=dsy+dr*dSY;
-      const sc=SJ_SG_CFG[p.sg];
-      const dc2=sc?sc.col:z.col;
-      if(dy+dR<y+P+zH-12){
-        s+=`<ellipse cx="${dx+1}" cy="${dy+2}" rx="${dR}" ry="${dR*0.35}" fill="rgba(0,0,0,.1)"/>`;
-        s+=`<circle cx="${dx}" cy="${dy}" r="${dR}" fill="${dc2}"/>`;
-        s+=`<circle cx="${dx}" cy="${dy}" r="${dR-1.5}" fill="none" stroke="white" stroke-width="0.8" opacity="0.35"/>`;
-        const abbr=(p.n.split(' ')[0]||'').substring(0,5);
-        s+=`<text x="${dx}" y="${dy+2.5}" text-anchor="middle" font-size="4.5" fill="white" font-weight="700" font-family="Arial,sans-serif">${abbr}</text>`;
-        // Group letter on drum
-        s+=`<text x="${dx+dR-1}" y="${dy-dR+4}" text-anchor="middle" font-size="4" fill="${dc2}" font-weight="900" font-family="Arial,sans-serif">${p.sg}</text>`;
-      }
+  // Layout constants — bigger drums, full names
+  const MARGIN=10,HDR=40,DW=28,DH=40,PAD=9,RH=54,BARG=16;
+  const nZ=ordZ.length;
+  const CALC_ZW=Math.floor((390-2*MARGIN-(nZ-1)*BARG)/nZ);
+  const ZW=Math.max(110,CALC_ZW);
+  const W=2*MARGIN+nZ*ZW+(nZ-1)*BARG;
+  const maxP=Math.max(...ordZ.map(z=>zpMap[z].length));
+  const ZH=HDR+PAD+maxP*RH+PAD;
+  const H=18+ZH+20;
+  // Word wrap — 3 lines max, handles long words
+  function wt(txt,wpx,fs){
+    const mc=Math.max(7,Math.floor(wpx/(fs*0.58)));
+    const ws=txt.split(' ');const ls=[];let ln='';
+    ws.forEach(w=>{
+      while(w.length>mc){ls.push(w.substr(0,mc));w=w.substr(mc);}
+      const t=ln?ln+' '+w:w;
+      if(t.length<=mc){ln=t;}else{if(ln)ls.push(ln);ln=w;}
     });
-    if(z.prds.length>10){
-      s+=`<text x="${x+P+zW-4}" y="${y+P+zH-3}" text-anchor="end" font-size="7.5" fill="${z.col}" font-weight="800" font-family="Arial,sans-serif">+${z.prds.length-10}</text>`;
-    }
-  });
-
-  // Barriers between adjacent zones
-  zones.forEach((za,ia)=>{
-    zones.forEach((zb,ib)=>{
-      if(ib<=ia)return;
-      const c=zc(za.id,zb.id);
-      if(c==='+')return;
-      const bcol=c==='X'?'#C8102E':'#B8860B',bop=c==='X'?1:0.8;
-      // Horizontal
-      if(za.row2===zb.row2&&Math.abs(za.col2-zb.col2)===1){
-        const lz=za.col2<zb.col2?za:zb;
-        const bx=M+(lz.col2+1)*ZW,by=M+lz.row2*ZH+12,bh=ZH-24;
-        s+=`<rect x="${bx-3.5}" y="${by}" width="7" height="${bh}" fill="${bcol}" rx="3" opacity="${bop}"/>`;
-        const my=by+bh/2;
-        s+=`<circle cx="${bx}" cy="${my}" r="10" fill="${bcol}" opacity="0.2"/>`;
-        s+=`<circle cx="${bx}" cy="${my}" r="9" fill="${bcol}"/>`;
-        s+=`<text x="${bx}" y="${my+4.5}" text-anchor="middle" font-size="13" font-weight="900" fill="white" font-family="Arial,sans-serif">${c==='X'?'✕':'!'}</text>`;
-      }
-      // Vertical
-      if(za.col2===zb.col2&&Math.abs(za.row2-zb.row2)===1){
-        const tz=za.row2<zb.row2?za:zb;
-        const by2=M+(tz.row2+1)*ZH,bx2=M+tz.col2*ZW+12,bw=ZW-24;
-        s+=`<rect x="${bx2}" y="${by2-3.5}" width="${bw}" height="7" fill="${bcol}" rx="3" opacity="${bop}"/>`;
-        const mx=bx2+bw/2;
-        s+=`<circle cx="${mx}" cy="${by2}" r="10" fill="${bcol}" opacity="0.2"/>`;
-        s+=`<circle cx="${mx}" cy="${by2}" r="9" fill="${bcol}"/>`;
-        s+=`<text x="${mx}" y="${by2+4.5}" text-anchor="middle" font-size="13" font-weight="900" fill="white" font-family="Arial,sans-serif">${c==='X'?'✕':'!'}</text>`;
-      }
-    });
-  });
-
-  // Front wall + door
-  s+=`<rect x="${M-9}" y="${M+IH}" width="${IW+18}" height="9" fill="url(#hw)"/>`;
-  const dgW=34,dgX=M+IW/2-dgW/2;
-  s+=`<rect x="${dgX}" y="${M+IH}" width="${dgW}" height="9" fill="#DDE3EC"/>`;
-  s+=`<path d="M${dgX} ${M+IH} A${dgW} ${dgW} 0 0 0 ${dgX+dgW} ${M+IH}" fill="none" stroke="#888" stroke-width="1" stroke-dasharray="3,2"/>`;
-  s+=`<text x="${M+IW/2}" y="${H+18}" text-anchor="middle" font-size="8" fill="#888" font-family="Arial,sans-serif">▲  ENTRANCE</text>`;
-  s+=`<rect x="${M}" y="${M}" width="${IW}" height="${IH}" fill="none" stroke="#1F2937" stroke-width="1.5" rx="4"/>`;
-  s+=`</svg>`;
-
-  const rid='sj-room-'+Math.random().toString(36).slice(2,7);
-
-  // Pair incompatibilities for the text list below the diagram
-  const activePairs=[];
-  for(let i=0;i<activeZIds.length;i++)for(let j=i+1;j<activeZIds.length;j++){
-    const a=activeZIds[i],b=activeZIds[j],c=zc(a,b);
-    if(c!=='+')activePairs.push({a,b,c,info:zci(a,b)});
+    if(ln)ls.push(ln);return ls.slice(0,3);
   }
-
+  // Draw a realistic 3D chemical drum at (cx,cy) — side view with lid, hoops, bung
+  function drum(cx,cy,col){
+    const rx=DW/2, ryT=DH*0.18, yt=cy-DH/2, yb=cy+DH/2;
+    const h1=yt+(yb-yt)*0.30, h2=yt+(yb-yt)*0.68;
+    return (
+      // Floor shadow
+      `<ellipse cx="${cx+1}" cy="${yb+3}" rx="${rx+1}" ry="3.5" fill="rgba(0,0,0,.14)"/>`+
+      // Barrel body
+      `<rect x="${cx-rx}" y="${yt}" width="${DW}" height="${yb-yt}" rx="2.5" fill="${col}"/>`+
+      // Left highlight stripe (3D effect)
+      `<rect x="${cx-rx}" y="${yt}" width="${rx*0.32}" height="${yb-yt}" rx="2.5" fill="rgba(255,255,255,.16)"/>`+
+      // Metal hoop 1
+      `<rect x="${cx-rx-1}" y="${h1-2}" width="${DW+2}" height="4.5" rx="1.5" fill="rgba(0,0,0,.22)"/>`+
+      // Metal hoop 2
+      `<rect x="${cx-rx-1}" y="${h2-2}" width="${DW+2}" height="4.5" rx="1.5" fill="rgba(0,0,0,.22)"/>`+
+      // Bottom ellipse (dark base)
+      `<ellipse cx="${cx}" cy="${yb}" rx="${rx}" ry="${ryT*0.65}" fill="rgba(0,0,0,.25)"/>`+
+      // Top lid ellipse
+      `<ellipse cx="${cx}" cy="${yt}" rx="${rx}" ry="${ryT}" fill="${col}" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>`+
+      // Lid inner highlight (sheen)
+      `<ellipse cx="${cx-rx*0.2}" cy="${yt-ryT*0.3}" rx="${rx*0.55}" ry="${ryT*0.45}" fill="rgba(255,255,255,.3)"/>`+
+      // Bung hole on lid
+      `<circle cx="${cx+rx*0.48}" cy="${yt+0.5}" r="${DW*0.13}" fill="rgba(0,0,0,.5)"/>`+
+      `<circle cx="${cx+rx*0.48}" cy="${yt}" r="${DW*0.07}" fill="rgba(255,255,255,.5)"/>`
+    );
+  }
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:${Math.min(W,320)}px;height:auto;display:block;border-radius:8px">`;
+  s+=`<defs><pattern id="srH" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#BEC5D0" stroke-width="1.5"/></pattern></defs>`;
+  s+=`<rect width="${W}" height="${H}" fill="#DDE3EC" rx="8"/>`;
+  s+=`<rect width="${W}" height="${H}" fill="url(#srH)" opacity="0.45" rx="8"/>`;
+  s+=`<text x="${W/2}" y="11" text-anchor="middle" font-size="7.5" font-weight="700" fill="#4A5568" letter-spacing="1.2" font-family="Arial,sans-serif">CHEMICAL STORAGE ROOM — OFFICIAL ZONE LAYOUT (WILHELMSEN)</text>`;
+  const TOP=16;
+  ordZ.forEach((zid,i)=>{
+    const z=ZCFG[zid];const x=MARGIN+i*(ZW+BARG);const y=TOP;
+    const ps=zpMap[zid];const nameW=ZW-PAD*2-DW-8;const nameX=x+PAD+DW+8;
+    // Zone card
+    s+=`<rect x="${x}" y="${y}" width="${ZW}" height="${ZH}" fill="${z.light}" stroke="${z.col}" stroke-width="2" rx="7"/>`;
+    // Header
+    s+=`<rect x="${x}" y="${y}" width="${ZW}" height="${HDR}" fill="${z.col}" rx="7"/>`;
+    s+=`<rect x="${x}" y="${y+HDR-6}" width="${ZW}" height="6" fill="${z.col}"/>`;
+    s+=`<text x="${x+ZW/2}" y="${y+14}" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,.85)" font-family="Arial,sans-serif" letter-spacing="1">ZONE ${z.num}</text>`;
+    s+=`<text x="${x+ZW/2}" y="${y+30}" text-anchor="middle" font-size="10.5" font-weight="900" fill="white" font-family="Arial,sans-serif">${z.title}</text>`;
+    // Products rows
+    ps.forEach((p,pi)=>{
+      const rowY=y+HDR+PAD+pi*RH;const cy=rowY+RH/2;const dx=x+PAD+DW/2;
+      const sc=SJ_SG_CFG[p.sg]||{col:z.col};const col2=sc.col||z.col;
+      // Row bg
+      s+=`<rect x="${x+1}" y="${rowY+1}" width="${ZW-2}" height="${RH-2}" fill="rgba(255,255,255,.35)" rx="4"/>`;
+      // Drum
+      s+=drum(dx,cy,col2);
+      // Group letter on drum
+      s+=`<text x="${dx}" y="${cy+3.5}" text-anchor="middle" font-size="7.5" fill="white" font-weight="900" font-family="Arial,sans-serif" opacity="0.9">${p.sg}</text>`;
+      // Product name (full, word-wrapped, up to 3 lines, vertically centred)
+      const fs=7.5;const lines=wt(p.n,nameW,fs);
+      const lh=9;const totalTH=(lines.length-1)*lh;const baseY=cy-(totalTH/2)+2;
+      lines.forEach((l,li)=>{
+        s+=`<text x="${nameX}" y="${baseY+li*lh}" font-size="${fs}" fill="${z.tc}" font-weight="700" font-family="Arial,sans-serif">${l}</text>`;
+      });
+      // Part number in small grey below name
+      s+=`<text x="${nameX}" y="${baseY+lines.length*lh+1}" font-size="6" fill="${z.tc}" opacity="0.55" font-family="Arial,sans-serif">#${p.id}</text>`;
+    });
+    // Bottom shelf
+    s+=`<line x1="${x+PAD}" y1="${y+ZH-5}" x2="${x+ZW-PAD}" y2="${y+ZH-5}" stroke="${z.col}" stroke-width="0.7" opacity="0.3"/>`;
+  });
+  // Barriers between adjacent zones
+  ordZ.slice(0,-1).forEach((zid,i)=>{
+    const c=zcmp(zid,ordZ[i+1]);if(c==='+')return;
+    const bx=MARGIN+(i+1)*(ZW+BARG)-BARG;const col=c==='X'?'#C8102E':'#B8860B';
+    s+=`<rect x="${bx+2}" y="${TOP+3}" width="${BARG-4}" height="${ZH-6}" fill="${col}" rx="2" opacity="0.9"/>`;
+    const my=TOP+ZH/2;
+    s+=`<circle cx="${bx+BARG/2}" cy="${my}" r="12" fill="${col}" opacity="0.2"/>`;
+    s+=`<circle cx="${bx+BARG/2}" cy="${my}" r="10" fill="${col}"/>`;
+    s+=`<text x="${bx+BARG/2}" y="${my+5.5}" text-anchor="middle" font-size="14" font-weight="900" fill="white" font-family="Arial,sans-serif">${c==='X'?'✕':'!'}</text>`;
+  });
+  // Entrance
+  const ex=W/2,ey=TOP+ZH+2;
+  s+=`<rect x="${ex-24}" y="${ey}" width="48" height="9" fill="#DDE3EC"/>`;
+  s+=`<path d="M${ex-24} ${ey} A48 48 0 0 0 ${ex+24} ${ey}" fill="none" stroke="#888" stroke-width="1" stroke-dasharray="3,2"/>`;
+  s+=`<text x="${ex}" y="${H-3}" text-anchor="middle" font-size="8" fill="#888" font-family="Arial,sans-serif">▲  ENTRANCE</text>`;
+  s+=`</svg>`;
+  const rid='sj-room-'+Math.random().toString(36).slice(2,7);
+  // Zone compat info
+  const activePairs=[];
+  for(let i=0;i<ordZ.length;i++)for(let j=i+1;j<ordZ.length;j++){
+    const a=ordZ[i],b=ordZ[j],c=zcmp(a,b);
+    if(c!=='+')activePairs.push({a,b,c,info:sjCompatInfo(a.replace('z',''),b.replace('z',''))||''});
+  }
   return `
 <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px">
@@ -5656,48 +5625,19 @@ function sjStorageRoom(prods){
         Storage Room Plan
         <span style="font-size:9px;font-weight:600;color:#fff;background:var(--accent);padding:1px 7px;border-radius:10px">Official Zones</span>
       </div>
-      <div style="font-size:10px;color:var(--text3);line-height:1.5">Based on Wilhelmsen Storage & Safe Handling Poster · 4 official zones + Oxidising area · ✕ = zones must NOT be adjacent</div>
+      <div style="font-size:10px;color:var(--text3);line-height:1.5">Drum icons with full product names · ✕ = zones must NOT be adjacent</div>
     </div>
     <button onclick="sjPrint()" style="display:flex;align-items:center;gap:5px;padding:8px 13px;background:linear-gradient(135deg,#003057,#005DAA);border:none;border-radius:10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,93,170,.35)">
       <i class="ti ti-printer" style="font-size:13px"></i>Print / PDF
     </button>
   </div>
-  <div id="${rid}" style="border-radius:8px;overflow:hidden">${s}</div>
-
-  <!-- Zone key -->
+  <div id="${rid}" style="border-radius:8px;overflow-x:auto;overflow-y:hidden">${s}</div>
   <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-    ${Object.values(ZONE_CFG).filter(zc=>activeZIds.includes(zc.id)).map(zc=>`
-    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:${zc.bg};border:1px solid ${zc.col}25">
-      <div style="width:9px;height:9px;border-radius:50%;background:${zc.col};flex-shrink:0"></div>
-      <span style="font-size:9px;font-weight:700;color:${zc.col}">Zone ${zc.num} – ${zc.title}</span>
-    </div>`).join('')}
-    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:#FDEAED;border:1px solid #C8102E25;margin-left:auto">
-      <div style="width:16px;height:5px;border-radius:3px;background:#C8102E"></div>
-      <span style="font-size:9px;font-weight:700;color:#C8102E">✕ Must NOT be adjacent</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:#FFF8E1;border:1px solid #B8860B25">
-      <div style="width:13px;height:4px;border-radius:2px;background:#B8860B"></div>
-      <span style="font-size:9px;font-weight:700;color:#B8860B">! Caution</span>
-    </div>
+    ${ordZ.map(zid=>{const zv=ZCFG[zid];return `<div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:${zv.light};border:1px solid ${zv.col}30"><div style="width:9px;height:9px;border-radius:50%;background:${zv.col};flex-shrink:0"></div><span style="font-size:9px;font-weight:700;color:${zv.col}">Zone ${zv.num} – ${zv.title}</span></div>`;}).join('')}
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:#FDEAED;border:1px solid #C8102E25;margin-left:auto"><div style="width:16px;height:5px;border-radius:3px;background:#C8102E"></div><span style="font-size:9px;font-weight:700;color:#C8102E">✕ Must NOT be adjacent</span></div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:#FFF8E1;border:1px solid #B8860B25"><div style="width:13px;height:4px;border-radius:2px;background:#B8860B"></div><span style="font-size:9px;font-weight:700;color:#B8860B">! Caution</span></div>
   </div>
-
-  ${activePairs.length?`
-  <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px">Zone Incompatibilities in This Selection</div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      ${activePairs.map(({a,b,c,info})=>{
-        const zA=ZONE_CFG[a],zB=ZONE_CFG[b];
-        const cv=c==='X'?{col:'#C8102E',bg:'#FDEAED',icon:'ti-x'}:{col:'#B8860B',bg:'#FFF8E1',icon:'ti-alert-triangle'};
-        return `<div style="background:${cv.bg};border:1px solid ${cv.col}20;border-radius:8px;padding:8px 11px">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:${info?4:0}px">
-            <i class="ti ${cv.icon}" style="font-size:13px;color:${cv.col};flex-shrink:0"></i>
-            <div style="font-size:11px;font-weight:700;color:${cv.col}">Zone ${zA.num} (${zA.title}) ↔ Zone ${zB.num} (${zB.title})</div>
-          </div>
-          ${info?`<div style="font-size:10px;color:${cv.col};opacity:.85;line-height:1.4;padding-left:19px">${info}</div>`:''}
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`:''}
+  ${activePairs.length?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px">Zone Incompatibilities</div><div style="display:flex;flex-direction:column;gap:4px">${activePairs.map(({a,b,c,info})=>{const zA=ZCFG[a],zB=ZCFG[b];const cv=c==='X'?{col:'#C8102E',bg:'#FDEAED',icon:'ti-x'}:{col:'#B8860B',bg:'#FFF8E1',icon:'ti-alert-triangle'};return `<div style="background:${cv.bg};border:1px solid ${cv.col}20;border-radius:8px;padding:8px 11px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:${info?4:0}px"><i class="ti ${cv.icon}" style="font-size:13px;color:${cv.col};flex-shrink:0"></i><div style="font-size:11px;font-weight:700;color:${cv.col}">Zone ${zA.num} (${zA.title}) ↔ Zone ${zB.num} (${zB.title})</div></div>${info?`<div style="font-size:10px;color:${cv.col};opacity:.85;line-height:1.4;padding-left:19px">${info}</div>`:''}</div>`;}).join('')}</div></div>`:''}
 </div>`;
 }
 
