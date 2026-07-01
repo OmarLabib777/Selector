@@ -231,6 +231,7 @@ input,button,select{font-family:Inter,sans-serif;-webkit-appearance:none}
     <button class="sb on" id="sn-home" onclick="goHome()"><i class="ti ti-home" aria-hidden="true"></i>Home</button>
     <button class="sb" id="sn-products" onclick="goSeg('products')"><i class="ti ti-package" aria-hidden="true"></i>Products</button>
     <button class="sb" id="sn-sr" onclick="goSeg('sr')"><i class="ti ti-search" aria-hidden="true"></i>Search</button>
+    <button class="sb" id="sn-sj" onclick="goSeg('sj')"><i class="ti ti-book-2" aria-hidden="true"></i>Safety</button>
   </div>
 </div>
 <div class="pw" id="pw"></div>
@@ -1776,13 +1777,13 @@ function goBack() {
   if(html) {
     rp(id, html, 'left');
   } else {
-    const fns = {home:hHome,wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch};
+    const fns = {home:hHome,wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch,sj:hSJ};
     rp(id, (fns[id]||hHome)(), 'left');
   }
 }
-function sseg(id) { ['home','wt','cl','fl','wld','gas','ref','kl','rp','nv','nbi','products','ai','sr'].forEach(s=>{const el=document.getElementById('sn-'+s);if(el)el.classList.toggle('on',s===id);}); }
+function sseg(id) { ['home','wt','cl','fl','wld','gas','ref','kl','rp','nv','nbi','products','ai','sr','sj'].forEach(s=>{const el=document.getElementById('sn-'+s);if(el)el.classList.toggle('on',s===id);}); }
 function goHome() { sseg('home'); stk=[{id:'home',html:null}]; rp('home', hHome(), 'left'); }
-function goSeg(s) { sseg(s); const fn={wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch}[s]; const html=fn?fn():null; stk=[{id:s,html}]; if(html)rp(s,html); }
+function goSeg(s) { sseg(s); const fn={wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch,sj:hSJ}[s]; const html=fn?fn():null; stk=[{id:s,html}]; if(html)rp(s,html); }
 function prB(pr) { const l=pr.toLowerCase(); return `<span class="bdg ${l.includes('must')?'b-must':l.includes('good')?'b-gth':'b-opt'}">${pr}</span>`; }
 function bb(b) { return b==='UNITOR'?'b-u':b==='NALFLEET'?'b-n':'b-nd'; }
 
@@ -4934,6 +4935,1140 @@ function hProducts(){
       </div>
     </div>
   </div>`;}
+
+
+// ── SHIPS JOURNAL ─────────────────────────────────────────────────────────────
+
+var sjState = {tab:'products', cat:'All', q:'', sel:[]};
+
+const SJ_CATS = ['All','Boiler','Cooling','Evaporator','Cleaning','Cargo','Fuel','Ballast','Potable','Pool','RO','Biological','EasyClean','Specialty'];
+
+// Official storage groups — Wilhelmsen Storage & Safe Handling Poster V01
+// A–G = Cleaning product groups; H = Oxidising agents (potable/pool chemicals)
+const SJ_SG_CFG = {
+  A:{label:'Corrosive Acids',        short:'A', zone:'Zone 1 – Acid Area',     col:'#C8102E', bg:'#FDEAED'},
+  B:{label:'Corrosive Alkaline',     short:'B', zone:'Zone 2 – Alkaline Area', col:'#1565C0', bg:'#E3F2FD'},
+  C:{label:'Corrosive Solvent-based',short:'C', zone:'Zone 3 – Solvent Area',  col:'#7B3F00', bg:'#FBE8D5'},
+  D:{label:'Low Hazard',             short:'D', zone:'Zone 4 – Low Hazard',    col:'#155D32', bg:'#E8F5E9'},
+  E:{label:'Non-Corrosive Acids',    short:'E', zone:'Zone 1 – Acid Area',     col:'#C0392B', bg:'#FDEDEC'},
+  F:{label:'Non-Corrosive Alkaline', short:'F', zone:'Zone 2 – Alkaline Area', col:'#0077A8', bg:'#E0F4FC'},
+  G:{label:'Non-Corrosive Solvent',  short:'G', zone:'Zone 3 – Solvent Area',  col:'#C87000', bg:'#FFF3E0'},
+  H:{label:'Oxidising Agents',       short:'H', zone:'Zone 5 – Oxidising',     col:'#7A5200', bg:'#FFF8E1'}
+};
+
+// Co-storage matrix from Wilhelmsen Storage & Safe Handling Poster
+// A=Corr.Acid  B=Corr.Alkali  C=Corr.Solvent  D=Low Hazard
+// E=Non-corr.Acid  F=Non-corr.Alkali  G=Non-corr.Solvent  H=Oxidising
+const SJ_COMPAT = (function(){
+  const M={
+    A:{A:'+',B:'X',C:'X',D:'O',E:'O',F:'X',G:'X',H:'X'},
+    B:{A:'X',B:'+',C:'X',D:'O',E:'X',F:'O',G:'X',H:'O'},
+    C:{A:'X',B:'X',C:'+',D:'O',E:'X',F:'X',G:'O',H:'X'},
+    D:{A:'O',B:'O',C:'O',D:'+',E:'+',F:'+',G:'+',H:'O'},
+    E:{A:'O',B:'X',C:'X',D:'+',E:'+',F:'X',G:'O',H:'X'},
+    F:{A:'X',B:'O',C:'X',D:'+',E:'X',F:'+',G:'O',H:'O'},
+    G:{A:'X',B:'X',C:'O',D:'+',E:'O',F:'O',G:'+',H:'X'},
+    H:{A:'X',B:'O',C:'X',D:'O',E:'X',F:'O',G:'X',H:'O'}
+  };
+  return function(a,b){ return (M[a]&&M[a][b])||'+'; };
+})();
+
+const SJ_COMPAT_INFO = {
+  'A|B':'Corrosive acid + corrosive alkaline react violently — severe heat, spattering and corrosive vapour. KEY RULE: Never store acids and alkalines together.',
+  'A|C':'Acid + corrosive solvent. Incompatible dual hazard. Keep in separate zones with independent bunds.',
+  'A|E':'Both in Zone 1 (Acid Area) — store with separate containment trays. Do not share the same spill tray.',
+  'A|F':'Acid + non-corrosive alkaline. Neutralisation reaction still generates heat. Must stay in separate zones.',
+  'A|G':'Acid + solvent product. Acid can react with solvent carriers and increase volatility. Keep separate.',
+  'A|H':'⚠ CRITICAL: Acid + oxidising agent (e.g. hypochlorite) releases TOXIC CHLORINE GAS. Completely separate rooms required.',
+  'B|C':'Corrosive alkaline + corrosive solvent. Dual hazard — alkaline can saponify solvents. Separate zones.',
+  'B|E':'Corrosive alkaline + non-corrosive acid. Neutralisation with heat. Group B must be kept apart from all acid products (Group E included).',
+  'B|F':'Both in Zone 2 (Alkaline Area). Store with physical separation (separate containment trays). Do not stack above acid products.',
+  'B|G':'Corrosive alkaline + solvent product. Keep in separate zones — incompatible corrosive and solvent hazards.',
+  'C|E':'Corrosive solvent + non-corrosive acid. Acid can react with solvent components. Separate zones.',
+  'C|F':'Corrosive solvent + alkaline. Alkaline incompatible — keep in separate zones.',
+  'C|G':'Both in Zone 3 (Solvent Area). Group C is dual-hazard (corrosive + solvent), Group G is non-corrosive solvent. Keep cool and ventilated, away from ignition.',
+  'C|H':'Solvent + oxidising agent. Serious fire and explosion risk. Completely separate — must not be adjacent.',
+  'E|F':'Non-corrosive acid + non-corrosive alkaline. Neutralisation reaction even at lower concentrations. Keep in separate zones.',
+  'E|H':'Non-corrosive acid + oxidising agent. Even mild acids can release chlorine gas with hypochlorite. Keep separate.',
+  'G|H':'Solvent-based product + oxidising agent. Serious fire risk. Must be completely separate — different rooms.',
+};
+function sjCompatInfo(a,b){ return SJ_COMPAT_INFO[a+'|'+b] || SJ_COMPAT_INFO[b+'|'+a] || ''; }
+
+const SJ_PPE_CFG = {
+  E:{label:'Eye Protection',   icon:'ti-eye',          col:'#0077A8', bg:'#E0F4FC'},
+  G:{label:'Gloves',           icon:'ti-hand-stop',    col:'#155D32', bg:'#E8F5E9'},
+  A:{label:'Chemical Apron',   icon:'ti-shield',       col:'#B45000', bg:'#FBE8D5'},
+  F:{label:'Face Shield',      icon:'ti-user-shield',  col:'#5B2C6F', bg:'#F3E5F5'},
+  R:{label:'Respirator',       icon:'ti-wind',         col:'#37474F', bg:'#ECEFF1'}
+};
+
+// Official GHS diamond pictogram renderer — matches symbols on chemical drums
+const SJ_GHS_LABELS = {
+  2:'Flammable', 3:'Oxidising', 4:'Compressed Gas', 5:'Corrosive',
+  6:'Acute Toxic', 7:'Harmful / Irritant', 8:'Health Hazard', 9:'Environmental'
+};
+
+// Returns an SVG string for a proper GHS diamond pictogram matching official drums
+function ghsDiamond(num, size) {
+  size = size || 52;
+  const S = {
+    // GHS02 Flammable — multi-peak flame silhouette
+    2:`<path d="M50 81C32 71 27 53 37 41C39 49 38 57 44 52C41 43 46 34 50 22C52 31 55 43 52 49C56 42 59 37 57 30C66 41 69 58 61 68C64 62 66 55 62 47C72 59 68 74 56 80Z" fill="#111"/>`,
+    // GHS03 Oxidising — flame above a thick-ring circle
+    3:`<circle cx="50" cy="77" r="10" stroke="#111" stroke-width="7" fill="none"/><path d="M50 65C43 57 41 47 46 39C48 46 47 51 50 48C49 42 52 34 55 27C55 36 59 43 57 48C60 43 63 38 61 31C67 42 70 56 63 65Z" fill="#111"/>`,
+    // GHS04 Compressed Gas — horizontal cylinder: single-path dome-left + flat-right + valve
+    4:`<path d="M50 42L76 42L76 62L50 62A20 10 0 0 0 50 42Z" fill="none" stroke="#111" stroke-width="5.5"/><line x1="76" y1="42" x2="83" y2="32" stroke="#111" stroke-width="5.5" stroke-linecap="round"/><rect x="79" y="27" width="11" height="8" rx="2.5" fill="#111"/>`,
+    // GHS05 Corrosive — drops on damaged surface (left) + drops on hand (right)
+    5:`<ellipse cx="25" cy="21" rx="4" ry="6" fill="#111"/><ellipse cx="37" cy="15" rx="3.5" ry="5" fill="#111"/><polygon points="12,34 32,34 36,47 16,47" fill="#111"/><polygon points="33,34 50,34 49,47 34,47" fill="#111"/><ellipse cx="63" cy="18" rx="4" ry="6" fill="#111"/><ellipse cx="75" cy="13" rx="3.5" ry="5" fill="#111"/><path d="M57 37L57 59Q57 69 67 69L73 69Q83 69 83 59L83 37L78 37L78 57L73 57L73 37L68 37L68 57L63 57L63 37Z" fill="#111"/>`,
+    // GHS06 Skull and crossbones
+    6:`<ellipse cx="50" cy="36" rx="20" ry="18" fill="#111"/><circle cx="43" cy="34" r="7" fill="white"/><circle cx="57" cy="34" r="7" fill="white"/><rect x="43" y="51" width="14" height="6" rx="3" fill="#111"/><rect x="38" y="58" width="7" height="11" rx="1.5" fill="#111"/><rect x="46.5" y="58" width="7" height="11" rx="1.5" fill="#111"/><rect x="55" y="58" width="7" height="11" rx="1.5" fill="#111"/><line x1="27" y1="65" x2="73" y2="80" stroke="#111" stroke-width="8" stroke-linecap="round"/><line x1="73" y1="65" x2="27" y2="80" stroke="#111" stroke-width="8" stroke-linecap="round"/>`,
+    // GHS07 Harmful/Irritant — exclamation mark
+    7:`<rect x="44" y="17" width="12" height="38" rx="6" fill="#111"/><circle cx="50" cy="72" r="8.5" fill="#111"/>`,
+    // GHS08 Health Hazard — person + 4-ray white asterisk (8-point) cut from chest
+    8:`<circle cx="50" cy="21" r="9" fill="#111"/><polygon points="37,31 63,31 58,72 42,72" fill="#111"/><line x1="37" y1="42" x2="21" y2="59" stroke="#111" stroke-width="7" stroke-linecap="round"/><line x1="63" y1="42" x2="79" y2="58" stroke="#111" stroke-width="7" stroke-linecap="round"/><line x1="50" y1="38" x2="50" y2="60" stroke="white" stroke-width="5" stroke-linecap="round"/><line x1="41" y1="43" x2="59" y2="55" stroke="white" stroke-width="5" stroke-linecap="round"/><line x1="41" y1="55" x2="59" y2="43" stroke="white" stroke-width="5" stroke-linecap="round"/><line x1="34" y1="49" x2="66" y2="49" stroke="white" stroke-width="5" stroke-linecap="round"/>`,
+    // GHS09 Environmental — dead bare tree (left) + dead fish (right)
+    9:`<line x1="30" y1="80" x2="30" y2="42" stroke="#111" stroke-width="6" stroke-linecap="round"/><line x1="30" y1="57" x2="14" y2="39" stroke="#111" stroke-width="5" stroke-linecap="round"/><line x1="30" y1="50" x2="15" y2="35" stroke="#111" stroke-width="4" stroke-linecap="round"/><line x1="30" y1="55" x2="45" y2="39" stroke="#111" stroke-width="5" stroke-linecap="round"/><line x1="30" y1="48" x2="47" y2="35" stroke="#111" stroke-width="4" stroke-linecap="round"/><path d="M53 65Q65 53 75 59Q75 71 65 77Q53 71 53 65Z" fill="#111"/><path d="M53 67L44 61L44 73Z" fill="#111"/><circle cx="70" cy="63" r="3" fill="white"/><path d="M75 70Q82 68 85 76" stroke="#111" stroke-width="4" fill="none" stroke-linecap="round"/>`
+  };
+  const sym = S[num] || '';
+  const lbl = SJ_GHS_LABELS[num] || ('GHS0'+num);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" title="${lbl}" style="flex-shrink:0">
+    <polygon points="50,3 97,50 50,97 3,50" fill="#D7131A"/>
+    <polygon points="50,14 86,50 50,86 14,50" fill="white"/>
+    ${sym}
+  </svg>`;
+}
+
+// Small inline badge version for product rows (no label)
+function ghsBadge(num) {
+  return `<span title="${SJ_GHS_LABELS[num]||'GHS0'+num}" style="display:inline-block;flex-shrink:0">${ghsDiamond(num,24)}</span>`;
+}
+
+const SJ_GHS_CFG = {
+  2:{label:'Flammable',         col:'#E65100', bg:'#FFF3E0'},
+  3:{label:'Oxidising',         col:'#FF6B00', bg:'#FFF3E0'},
+  5:{label:'Corrosive',         col:'#1565C0', bg:'#E3F2FD'},
+  6:{label:'Acute Toxic',       col:'#212121', bg:'#F5F5F5'},
+  7:{label:'Harmful / Irritant',col:'#E65100', bg:'#FFF3E0'},
+  8:{label:'Health Hazard',     col:'#6A0080', bg:'#F3E5F5'},
+  9:{label:'Environmental',     col:'#2E7D32', bg:'#E8F5E9'}
+};
+
+const SJ_PRODUCTS = [
+  // BOILER WATER
+  {id:'698720',  n:'Autotreat',                    cat:'Boiler',    signal:'D', fp:'>62°C',    ghs:[5,7],     sg:'B',     ppe:['E','G']},
+  {id:'777701',  n:'BWT Liquid Plus',              cat:'Boiler',    signal:'D', fp:'None',    ghs:[5,7],     sg:'B',     ppe:['E','G']},
+  {id:'571307',  n:'Alkalinity Control',           cat:'Boiler',    signal:'D', fp:'None',    ghs:[5],     sg:'B',     ppe:['E','G','A']},
+  {id:'571331',  n:'Boiler Coagulant',             cat:'Boiler',    signal:'N', fp:'None',    ghs:[],       sg:'D',     ppe:['E','G']},
+  {id:'774828',  n:'Condensate Control',           cat:'Boiler',    signal:'D', fp:'None',   ghs:[5,7],     sg:'F',     ppe:['E','G']},
+  {id:'777702',  n:'Condensate Treatment 9-150',   cat:'Boiler',    signal:'D', fp:'57°C',   ghs:[2,5,7,8],     sg:'F',     ppe:['E','G','R']},
+  {id:'777712',  n:'Oxygen Scavenger 9-002',       cat:'Boiler',    signal:'W', fp:'None',    ghs:[7],       sg:'E',  ppe:['E','G']},
+  {id:'698712',  n:'Oxygen Scavenger Plus',        cat:'Boiler',    signal:'W', fp:'None',    ghs:[7],     sg:'E',  ppe:['E','G']},
+  {id:'571315',  n:'Oxygen Control',               cat:'Boiler',    signal:'D', fp:'None',    ghs:[5,6,8,9],     sg:'E',  ppe:['E','G']},
+  {id:'777713',  n:'Oxytreat',                     cat:'Boiler',    signal:'N', fp:'None',    ghs:[],       sg:'D',  ppe:['E','G']},
+  {id:'571364',  n:'Vaptreat',                     cat:'Boiler',    signal:'N', fp:'None',    ghs:[],     sg:'D',     ppe:['E','G','R']},
+  {id:'777706',  n:'Hardness Treatment 7208',      cat:'Boiler',    signal:'D', fp:'None',    ghs:[5],     sg:'B',     ppe:['E','G']},
+  // COOLING WATER
+  {id:'698704',  n:'ACC Plus',                     cat:'Cooling',   signal:'D', fp:'>61°C',   ghs:[5,7,8],     sg:'B',     ppe:['E','G','A']},
+  {id:'680843',  n:'Cooltreat AL',                 cat:'Cooling',   signal:'W', fp:'None',    ghs:[8],       sg:'F',    ppe:['E','G']},
+  {id:'779030',  n:'Cooltreat ELC (Antifreeze)',   cat:'Cooling',   signal:'W', fp:'122°C',   ghs:[7,8],       sg:'D',    ppe:['E','G']},
+  {id:'777710',  n:'Nalfleet 2000',                cat:'Cooling',   signal:'D', fp:'None',    ghs:[7,8],     sg:'B',     ppe:['E','G']},
+  {id:'777044',  n:'Brine Corrosion Inhibitor',    cat:'Cooling',   signal:'D', fp:'None',    ghs:[7,8],     sg:'B',     ppe:['E','G']},
+  {id:'777703',  n:'Engine Water Treatment 9-108', cat:'Cooling',   signal:'D', fp:'None',    ghs:[5,6,8,9],       sg:'F',     ppe:['E','G']},
+  {id:'571356',  n:'Rocor NB Liquid',              cat:'Cooling',   signal:'D', fp:'None',    ghs:[7,8],   sg:'B',     ppe:['E','G','A']},
+  // EVAPORATOR
+  {id:'638676',  n:'Evaporator Defoamer',          cat:'Evaporator',signal:'N', fp:'None',    ghs:[],       sg:'D',    ppe:['E','G']},
+  {id:'769915',  n:'Filtercare',                   cat:'Evaporator',signal:'D', fp:'>62°C',   ghs:[7,8],     sg:'G',       ppe:['E','G','A']},
+  {id:'735977',  n:'MAR-71',                       cat:'Evaporator',signal:'D', fp:'None',    ghs:[5,6,8,9],     sg:'A',       ppe:['E','G','A']},
+  {id:'777707',  n:'Maxi-Vap Plus',                cat:'Evaporator',signal:'N', fp:'None',    ghs:[],       sg:'D',    ppe:['E','G']},
+  {id:'759340',  n:'MultiVap',                     cat:'Evaporator',signal:'N', fp:'None',    ghs:[],       sg:'D',    ppe:['E','G']},
+  {id:'777708',  n:'Multi Clean',                  cat:'Evaporator',signal:'D', fp:'None',    ghs:[5],     sg:'B',       ppe:['E','G','A','F']},
+  // CLEANING
+  {id:'764452',  n:'Air Cooler Cleaner',           cat:'Cleaning',  signal:'D', fp:'>60°C',   ghs:[7,8],     sg:'G',     ppe:['E','G','A','F']},
+  {id:'756254',  n:'Alkleen Liquid',               cat:'Cleaning',  signal:'W', fp:'None',    ghs:[7],       sg:'F',          ppe:['E','G']},
+  {id:'571513',  n:'Alkleen Safety Liquid',        cat:'Cleaning',  signal:'W', fp:'None',    ghs:[7],       sg:'F',          ppe:['E','G']},
+  {id:'575613',  n:'Aquabreak PX',                 cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5],     sg:'B',    ppe:['E','G','A','F']},
+  {id:'607826',  n:'Aquatuff',                     cat:'Cleaning',  signal:'D', fp:'None',  ghs:[5],     sg:'B',     ppe:['E','G','A','F']},
+  {id:'575696',  n:'Carbonclean LT',               cat:'Cleaning',  signal:'D', fp:'>61°C',    ghs:[5,8],       sg:'B',    ppe:['E','G','A']},
+  {id:'571604',  n:'Carbon Remover',               cat:'Cleaning',  signal:'D', fp:'None',   ghs:[5,6,8,9],     sg:'C',     ppe:['E','G','A']},
+  {id:'571497',  n:'Cleanbreak',                   cat:'Cleaning',  signal:'D', fp:'>61°C',    ghs:[7,8],     sg:'G',     ppe:['E','G','A']},
+  {id:'571430',  n:'Coldwash HD',                  cat:'Cleaning',  signal:'D', fp:'>61°C',   ghs:[7,8,9],     sg:'G',     ppe:['E','G','A']},
+  {id:'765990',  n:'Deck Clean NP',                cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5,7],       sg:'A',     ppe:['E','G','A','F']},
+  {id:'661843',  n:'Defoamer Concentrate',         cat:'Cleaning',  signal:'N', fp:'>100°C',    ghs:[],       sg:'D',          ppe:['E','G']},
+  {id:'571646',  n:'Descalex',                     cat:'Cleaning',  signal:'W', fp:'None',    ghs:[7],     sg:'E',       ppe:['E','G','A']},
+  {id:'571653',  n:'Descaling Liquid',             cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5,7],     sg:'A',       ppe:['E','G','A','F']},
+  {id:'571687',  n:'Disclean',                     cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5,7],     sg:'A',     ppe:['E','G','A','F']},
+  {id:'604389',  n:'Electrosolv-E',                cat:'Cleaning',  signal:'D', fp:'>61°C',   ghs:[8],       sg:'G',ppe:['E','G']},
+  {id:'726065',  n:'Electrosol Plus',              cat:'Cleaning',  signal:'D', fp:'>70°C',   ghs:[8],       sg:'G',          ppe:['E','G']},
+  {id:'765018',  n:'Enviroclean',                  cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5],       sg:'B',    ppe:['E','G','A']},
+  {id:'614537',  n:'Foam Agent',                   cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5],       sg:'B',    ppe:['E','G','A']},
+  {id:'571554',  n:'Fore & Aft',                   cat:'Cleaning',  signal:'W', fp:'None',    ghs:[7],       sg:'B',     ppe:['E','G','A','F']},
+  {id:'571729',  n:'HP Wash',                      cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5],     sg:'B',     ppe:['E','G','A','F']},
+  {id:'571661',  n:'Metal Brite',                  cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5],     sg:'A',       ppe:['E','G','A','F']},
+  {id:'571679',  n:'Metal Brite HD',               cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5,7],     sg:'A',       ppe:['E','G','A','F']},
+  {id:'571752',  n:'Natural Handcleaner',          cat:'Cleaning',  signal:'N', fp:'None',    ghs:[],        sg:'D',    ppe:[]},
+  // CARGO / TANK
+  {id:'779092',  n:'CargoBarrier HD',              cat:'Cargo',     signal:'W', fp:'None',    ghs:[7],       sg:'D',    ppe:['E','G']},
+  {id:'779104',  n:'Cargoclean HD',                cat:'Cargo',     signal:'D', fp:'None',    ghs:[5,7],     sg:'B',     ppe:['E','G','A']},
+  {id:'5711320', n:'CargoDescale',                 cat:'Cargo',     signal:'D', fp:'None',    ghs:[5,7],     sg:'A',       ppe:['E','G','A','F']},
+  {id:'719070',  n:'Scaleclean EX',                cat:'Cargo',     signal:'W', fp:'None',    ghs:[7],     sg:'E',       ppe:['E','G','A','F']},
+  {id:'719088',  n:'Scaleclean DL',                cat:'Cargo',     signal:'W', fp:'None',    ghs:[5,7],     sg:'E',       ppe:['E','G']},
+  {id:'654715',  n:'Seaclean Plus',                cat:'Cargo',     signal:'D', fp:'None',    ghs:[5,8],     sg:'C',     ppe:['E','G','A']},
+  {id:'764420',  n:'Seacare OSD 2',                cat:'Cargo',     signal:'D', fp:'73°C',   ghs:[7,8],     sg:'G',    ppe:['E','G','A']},
+  {id:'571489',  n:'Tankleen Advance',             cat:'Cargo',     signal:'D', fp:'None',    ghs:[5,7],     sg:'B',     ppe:['E','G','A']},
+  {id:'766097',  n:'Tankleen Bright',              cat:'Cargo',     signal:'D', fp:'None',    ghs:[7],       sg:'F',     ppe:['E','G']},
+  {id:'772870',  n:'Tankleen Swift',               cat:'Cargo',     signal:'D', fp:'None',    ghs:[5,7],     sg:'B',     ppe:['E','G','A']},
+  {id:'764430',  n:'Tankleen Tar',                 cat:'Cargo',     signal:'D', fp:'None',    ghs:[5,7],     sg:'B',     ppe:['E','G','A']},
+  {id:'635326',  n:'Mud & Silt Remover',           cat:'Cargo',     signal:'N', fp:'None',    ghs:[],        sg:'D',    ppe:[]},
+  // FUEL TREATMENT
+  {id:'779112',  n:'DieselPower CFPP',             cat:'Fuel',      signal:'D', fp:'70°C',   ghs:[7,8,9],     sg:'G',ppe:['E','G']},
+  {id:'779082',  n:'DieselPower Biocontrol',       cat:'Fuel',      signal:'D', fp:'>61°C',   ghs:[5,7,8,9],   sg:'G',ppe:['E','G']},
+  {id:'779094',  n:'DieselPower Lubricity',        cat:'Fuel',      signal:'N', fp:'180°C',   ghs:[],     sg:'G',ppe:['E','G']},
+  {id:'777190',  n:'DieselPower Enhancer',         cat:'Fuel',      signal:'D', fp:'>62°C',   ghs:[7,8,9],     sg:'G',ppe:['E','G']},
+  {id:'779096',  n:'FuelPower Catalyst',           cat:'Fuel',      signal:'D', fp:'>61°C',   ghs:[7,8],     sg:'G',ppe:['E','G']},
+  {id:'779114',  n:'FuelPower TSP VLSFO',          cat:'Fuel',      signal:'W', fp:'None',   ghs:[8],     sg:'G',ppe:['E','G']},
+  {id:'779090',  n:'FuelPower AshFree',            cat:'Fuel',      signal:'D', fp:'>61°C',   ghs:[8],     sg:'G',ppe:['E','G']},
+  {id:'778848',  n:'FuelPower Soot Remover Liq+',  cat:'Fuel',      signal:'W', fp:'None',   ghs:[7],       sg:'G',ppe:['E','G']},
+  {id:'778785',  n:'FuelPower Conditioner',        cat:'Fuel',      signal:'D', fp:'>61°C',   ghs:[7,8,9],       sg:'G',ppe:['E','G']},
+  {id:'779118',  n:'FuelPower PPD VLSFO',          cat:'Fuel',      signal:'D', fp:'68.5°C',   ghs:[7,8,9],       sg:'G',ppe:['E','G']},
+  {id:'571240',  n:'FuelPower Soot Remover',       cat:'Fuel',      signal:'W', fp:'None',    ghs:[7,9],       sg:'D',    ppe:['E','G']},
+  // BALLAST WATER
+  {id:'777013',  n:'Ballast Tank Inhibitor 9-933', cat:'Ballast',   signal:'D', fp:'None',    ghs:[5,7,9],     sg:'E',  ppe:['E','G']},
+  {id:'779214',  n:'BallastGuard SMBS Solid',      cat:'Ballast',   signal:'D', fp:'None',    ghs:[5,7],       sg:'E',  ppe:['E','G','R']},
+  {id:'779166',  n:'BallastGuard SBS 40',          cat:'Ballast',   signal:'W', fp:'None',    ghs:[7],       sg:'E',  ppe:['E','G']},
+  {id:'779212',  n:'BallastGuard STS Solid',       cat:'Ballast',   signal:'N', fp:'None',    ghs:[],       sg:'D',  ppe:['E','G','R']},
+  {id:'779162',  n:'BallastGuard STS 30',          cat:'Ballast',   signal:'N', fp:'None',    ghs:[],       sg:'D',  ppe:['E','G']},
+  {id:'779210',  n:'BallastGuard CIP Cleaner',     cat:'Ballast',   signal:'W', fp:'None',    ghs:[7],     sg:'E',       ppe:['E','G']},
+  {id:'690669',  n:'Bilgewater Flocculant',        cat:'Ballast',   signal:'D', fp:'None',    ghs:[5],     sg:'D',    ppe:['E','G']},
+  // POTABLE WATER
+  {id:'766402',  n:'Cal. Hypochlorite Granulate',  cat:'Potable',   signal:'D', fp:'None',    ghs:[3,5,7,9],   sg:'H',   ppe:['E','G','A','F']},
+  {id:'909001',  n:'Sodium Hypochlorite Potable',  cat:'Potable',   signal:'D', fp:'None',    ghs:[5,9],   sg:'H',   ppe:['E','G','A']},
+  {id:'624916',  n:'Potable Water Stabiliser',     cat:'Potable',   signal:'N', fp:'None',    ghs:[],   sg:'D',   ppe:['E','G','A']},
+  {id:'777714',  n:'Potable Water Stabiliser Liq', cat:'Potable',   signal:'N', fp:'None',    ghs:[],   sg:'D',   ppe:['E','G','A']},
+  // POOL & SPA
+  {id:'778902',  n:'Poolpower 90',                 cat:'Pool',      signal:'W', fp:'None',    ghs:[7,9],   sg:'H',   ppe:['E','G','A']},
+  {id:'778920',  n:'Melbrome Bromine Tablets',     cat:'Pool',      signal:'D', fp:'None',    ghs:[3,5,7,8,9], sg:'H',   ppe:['E','G','A','F']},
+  {id:'766538',  n:'Pool & Spa Hardness',          cat:'Pool',      signal:'W', fp:'None',    ghs:[7],       sg:'D',    ppe:['E','G']},
+  {id:'766539',  n:'Pool Clarifier',               cat:'Pool',      signal:'N', fp:'None',    ghs:[],       sg:'D',    ppe:['E','G']},
+  {id:'766537',  n:'pH Increaser',                 cat:'Pool',      signal:'W', fp:'None',    ghs:[7],       sg:'F',     ppe:['E','G']},
+  {id:'766540',  n:'Spa Defoamer',                 cat:'Pool',      signal:'N', fp:'None',    ghs:[],       sg:'D',    ppe:['E','G']},
+  {id:'773408',  n:'Hydrochloric Acid 33-35%',     cat:'Pool',      signal:'D', fp:'None',    ghs:[5,7],   sg:'A',       ppe:['E','G','A','F','R']},
+  // RO
+  {id:'777201',  n:'RO Surfactant Cleaner',        cat:'RO',        signal:'D', fp:'None',    ghs:[5],       sg:'F',    ppe:['E','G']},
+  {id:'777716',  n:'RO Scale Control',             cat:'RO',        signal:'N', fp:'None',    ghs:[],       sg:'D',    ppe:['E','G']},
+  {id:'777715',  n:'RO Mild Acid Cleaner',         cat:'RO',        signal:'W', fp:'None',    ghs:[7],     sg:'E',       ppe:['E','G']},
+  {id:'777852',  n:'RO Bisulphite',                cat:'RO',        signal:'W', fp:'None',    ghs:[7],       sg:'E',  ppe:['E','G']},
+  {id:'777718',  n:'RO Alkaline Cleaner',          cat:'RO',        signal:'D', fp:'None',    ghs:[5],     sg:'F',     ppe:['E','G']},
+  // BIOLOGICAL
+  {id:'571711',  n:'Gamazyme 700 FN',              cat:'Biological',signal:'N', fp:'None',    ghs:[],     sg:'D',    ppe:['E','G']},
+  {id:'628066',  n:'Gamazyme BOE',                 cat:'Biological',signal:'D', fp:'None',    ghs:[5,7],     sg:'D',    ppe:['E','G']},
+  {id:'589945',  n:'Gamazyme BTC',                 cat:'Biological',signal:'D', fp:'None',    ghs:[5],   sg:'B',    ppe:['E','G','A']},
+  {id:'666843',  n:'Gamazyme DPC',                 cat:'Biological',signal:'N', fp:'None',    ghs:[5,7],     sg:'D',    ppe:['E','G']},
+  {id:'659391',  n:'Gamazyme FC',                  cat:'Biological',signal:'D', fp:'None',    ghs:[5],       sg:'B',    ppe:['E','G','A']},
+  {id:'743189',  n:'Gamazyme Fresh',               cat:'Biological',signal:'N', fp:'None',    ghs:[],       sg:'D',    ppe:['E','G','A']},
+  {id:'587618',  n:'Gamazyme MSC',                 cat:'Biological',signal:'W', fp:'None',    ghs:[7],       sg:'F',    ppe:['E','G']},
+  {id:'743146',  n:'Gamazyme TDS',                 cat:'Biological',signal:'W', fp:'None',    ghs:[7],       sg:'E',    ppe:['E','G','A','F']},
+  {id:'628026',  n:'Gamazyme Digestor',            cat:'Biological',signal:'W', fp:'None',    ghs:[7],       sg:'E',    ppe:['E','G','A']},
+  {id:'778918',  n:'Bioguard Plus',                cat:'Biological',signal:'D', fp:'>100°C',  ghs:[6,7],     sg:'D',    ppe:['E','G','A']},
+  // EASYCLEAN
+  {id:'778843',  n:'EasyClean Floor & Hard Surf.', cat:'EasyClean', signal:'W', fp:'None',    ghs:[7],       sg:'F',    ppe:['E','G','A']},
+  {id:'778845',  n:'EasyClean Cleaning & Disinfect',cat:'EasyClean',signal:'D', fp:'None',    ghs:[5,7,9],     sg:'B',    ppe:['E','G','A','F']},
+  {id:'778847',  n:'EasyClean Window & Mirror',    cat:'EasyClean', signal:'D', fp:'None',    ghs:[5],       sg:'A',    ppe:['E','G','A']},
+  {id:'778849',  n:'EasyClean Soft Surface & Spot',cat:'EasyClean', signal:'W', fp:'None',    ghs:[7],       sg:'F',    ppe:['E','G']},
+  {id:'778850',  n:'EasyClean Laundry Tablets',    cat:'EasyClean', signal:'D', fp:'None',    ghs:[5,7],     sg:'B',    ppe:['E','G']},
+  {id:'778851',  n:'EasyClean Basin & Toilet Bowl',cat:'EasyClean', signal:'D', fp:'None',    ghs:[5],     sg:'A',       ppe:['E','G','A','F']},
+  {id:'778853',  n:'EasyClean Liquid Hand Soap',   cat:'EasyClean', signal:'N', fp:'None',    ghs:[],        sg:'D',    ppe:[]},
+  {id:'778858',  n:'EasyClean Liquid Hand Soap D',  cat:'EasyClean', signal:'N', fp:'None',    ghs:[],   sg:'D',    ppe:['E','G']},
+  {id:'778856',  n:'EasyClean Hand Sanitizer',     cat:'EasyClean', signal:'D', fp:'None',    ghs:[5,9],     sg:'B',ppe:['E','G','A']},
+  {id:'778860',  n:'EasyClean Oven & Grill',       cat:'EasyClean', signal:'D', fp:'None',    ghs:[5],     sg:'B',     ppe:['E','G','A','F']},
+  {id:'778864',  n:'EasyClean Dishwash Liquid',    cat:'EasyClean', signal:'D', fp:'None',    ghs:[5],       sg:'B',    ppe:['E','G','A']},
+  {id:'778871',  n:'EasyClean Laundry Powder',     cat:'EasyClean', signal:'W', fp:'None',    ghs:[7],     sg:'E',    ppe:['E','G','A','F']},
+  {id:'778873',  n:'EasyClean Laundry Conditioner',cat:'EasyClean', signal:'N', fp:'None',    ghs:[],       sg:'F',    ppe:['E','G']},
+  // SPECIALTY
+  {id:'909016',  n:'Sodium Meta Bisulphite 38-42%',cat:'Specialty', signal:'D', fp:'None',   ghs:[5,7],     sg:'E',  ppe:['E','G','R']},
+  {id:'909012',  n:'Sodium Thiosulphate Powder',   cat:'Specialty', signal:'W', fp:'None',    ghs:[7,9],       sg:'E',  ppe:['E','G']},
+  {id:'909014',  n:'Sodium Thiosulphate Liq 30%',  cat:'Specialty', signal:'W', fp:'None',    ghs:[7],       sg:'E',  ppe:['E','G']},
+  {id:'624932',  n:'Commissioning Cleaner',        cat:'Specialty', signal:'W', fp:'None',    ghs:[7],       sg:'F',    ppe:['E','G','A']},
+  {id:'726015',  n:'Cleanrig CHP',                 cat:'Cleaning',  signal:'D', fp:'None',    ghs:[5],     sg:'B',    ppe:['E','G','A']},
+  {id:'726020',  n:'Cleanrig CHP 50%',             cat:'Cleaning',  signal:'W', fp:'None',    ghs:[7],     sg:'F',    ppe:['E','G','A']},
+  {id:'909018',  n:'Monoethylene Glycol Regular',  cat:'Specialty', signal:'W', fp:'111°C',  ghs:[7,8],       sg:'D',    ppe:['E','G']},
+  {id:'758623',  n:'Teak Renewer',                 cat:'Specialty', signal:'D', fp:'None',    ghs:[5,7],     sg:'A',       ppe:['E','G','A','F']},
+  {id:'736983',  n:'Unipol',                       cat:'Specialty', signal:'D', fp:'None',    ghs:[5],     sg:'G',ppe:['E','G']},
+  {id:'607819',  n:'Unitor USC',                   cat:'Specialty', signal:'D', fp:'None',    ghs:[5],     sg:'B',     ppe:['E','G','A']},
+  {id:'571321',  n:'Ultraclean GO',                cat:'Specialty', signal:'D', fp:'None',    ghs:[5],     sg:'B',     ppe:['E','G','A','F']},
+  {id:'740498',  n:'Vacuum Pipe Cleaner',          cat:'Specialty', signal:'N', fp:'None',    ghs:[],       sg:'E',    ppe:['E','G','A','F']},
+  {id:'737015',  n:'Slip Coat',                    cat:'Specialty', signal:'N', fp:'None',    ghs:[],        sg:'D',    ppe:[]},
+  {id:'778865',  n:'Slip Coat Plus',               cat:'Specialty', signal:'N', fp:'None',    ghs:[],        sg:'D',    ppe:[]}
+];
+
+// ── SJ UI ──────────────────────────────────────────────────────────────────────
+
+function hSJ(){
+  const tab = sjState.tab;
+  const total = SJ_PRODUCTS.length;
+  return `<div id="sj-root" style="background:var(--bg);min-height:100%">
+  <div style="background:linear-gradient(150deg,#0D1F3C,#1A3560);padding:20px 14px 16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.3);display:grid;place-items:center;flex-shrink:0">
+        <i class="ti ti-book-2" style="font-size:22px;color:#FFD700"></i>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45)">UNITOR · NALFLEET</div>
+        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1.1">Ships Journal</div>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div style="font-size:18px;font-weight:800;color:#FFD700">${total}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em">Products</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.5">Hazard classification · GHS symbols · PPE requirements · Storage compatibility checker</div>
+  </div>
+  <div style="display:flex;background:var(--bg2);border-bottom:1px solid var(--border)">
+    <button onclick="sjState.tab='products';sjRender()" style="flex:1;padding:11px 4px 9px;border:none;background:none;font-size:11px;font-weight:${tab==='products'?700:500};color:${tab==='products'?'var(--accent)':'var(--text3)'};border-bottom:2px solid ${tab==='products'?'var(--accent)':'transparent'};cursor:pointer;margin-bottom:-1px;display:flex;align-items:center;justify-content:center;gap:4px">
+      <i class="ti ti-search" style="font-size:13px"></i>Product Search
+    </button>
+    <button onclick="sjState.tab='storage';sjRender()" style="flex:1;padding:11px 4px 9px;border:none;background:none;font-size:11px;font-weight:${tab==='storage'?700:500};color:${tab==='storage'?'var(--accent)':'var(--text3)'};border-bottom:2px solid ${tab==='storage'?'var(--accent)':'transparent'};cursor:pointer;margin-bottom:-1px;display:flex;align-items:center;justify-content:center;gap:4px">
+      <i class="ti ti-grid-dots" style="font-size:13px"></i>Storage Checker${sjState.sel.length>0?` <span style="background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px">${sjState.sel.length}</span>`:''}
+    </button>
+  </div>
+  <div id="sj-body">${tab==='products'?sjProductsTab():sjStorageTab()}</div>
+</div>`;
+}
+
+function sjRender(){
+  const root = document.getElementById('sj-root');
+  if(!root){goSeg('sj');return;}
+  // update tab buttons
+  root.querySelectorAll('button[onclick*="sjState.tab"]').forEach(b=>{
+    const isP = b.getAttribute('onclick').includes("'products'");
+    const active = isP ? sjState.tab==='products' : sjState.tab==='storage';
+    b.style.fontWeight = active ? 700 : 500;
+    b.style.color = active ? 'var(--accent)' : 'var(--text3)';
+    b.style.borderBottom = active ? '2px solid var(--accent)' : '2px solid transparent';
+    if(!isP){
+      const cnt = sjState.sel.length;
+      const badge = b.querySelector('span');
+      if(cnt > 0){
+        if(!badge){const s=document.createElement('span');s.style.cssText='background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px';s.textContent=cnt;b.appendChild(s);}
+        else badge.textContent=cnt;
+      } else if(badge) badge.remove();
+    }
+  });
+  const body = document.getElementById('sj-body');
+  if(body) body.innerHTML = sjState.tab==='products' ? sjProductsTab() : sjStorageTab();
+}
+
+function sjProductsTab(){
+  const q = (sjState.q||'').toLowerCase();
+  const cat = sjState.cat||'All';
+  let prods = SJ_PRODUCTS;
+  if(cat!=='All') prods = prods.filter(p=>p.cat===cat);
+  if(q) prods = prods.filter(p=>p.n.toLowerCase().includes(q)||p.id.includes(sjState.q));
+  return `<div style="padding:10px 12px">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <i class="ti ti-search" style="font-size:15px;color:var(--text3);flex-shrink:0"></i>
+    <input type="text" placeholder="Search by name or part number..." value="${sjState.q||''}" oninput="sjState.q=this.value;sjRender()" style="flex:1;border:none;outline:none;background:transparent;font-size:13px;color:var(--text);font-family:Inter,sans-serif"/>
+    ${sjState.q?`<button onclick="sjState.q='';sjRender()" style="border:none;background:none;cursor:pointer;padding:0;line-height:1"><i class="ti ti-x" style="font-size:13px;color:var(--text3)"></i></button>`:''}
+  </div>
+  <div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;-webkit-overflow-scrolling:touch">
+    ${SJ_CATS.map(c=>`<button onclick="sjState.cat='${c}';sjRender()" style="flex-shrink:0;padding:5px 11px;border-radius:20px;border:1px solid ${sjState.cat===c?'var(--accent)':'var(--border)'};background:${sjState.cat===c?'var(--accent)':'var(--card)'};color:${sjState.cat===c?'#fff':'var(--text2)'};font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">${c}</button>`).join('')}
+  </div>
+  <div style="font-size:10px;color:var(--text3);margin-bottom:8px;padding:0 2px">${prods.length} of ${SJ_PRODUCTS.length} products</div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+    ${prods.length===0?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">No products match your search.</div>`:prods.map(p=>sjProductRow(p)).join('')}
+  </div>
+</div>`;
+}
+
+function sjProductRow(p){
+  const sig=p.signal, sc=SJ_SG_CFG[p.sg]||{label:p.sg||'—',col:'#888',bg:'#eee',short:p.sg||'?',zone:''};
+  const scol=sig==='D'?'#C8102E':sig==='W'?'#B8860B':'#6B7280';
+  const slbl=sig==='D'?'DANGER':sig==='W'?'WARNING':'—';
+  return `<div onclick="sjDet('${p.id}')" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:10px;-webkit-tap-highlight-color:transparent">
+  <div style="width:32px;height:32px;border-radius:8px;background:${sc.col};display:grid;place-items:center;flex-shrink:0;box-shadow:0 2px 6px ${sc.col}40">
+    <span style="font-size:14px;font-weight:900;color:#fff;line-height:1">${p.sg}</span>
+  </div>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.2">${p.n}</div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+      <span style="font-size:8px;font-weight:800;letter-spacing:.04em;padding:2px 6px;border-radius:4px;background:${scol}18;color:${scol};border:1px solid ${scol}35">${slbl}</span>
+      <span style="font-size:8px;padding:2px 6px;border-radius:4px;background:${sc.bg};color:${sc.col};font-weight:600;border:1px solid ${sc.col}25">${sc.label}</span>
+      ${p.ghs.slice(0,3).map(g=>`${ghsBadge(g)}`).join('')}
+    </div>
+  </div>
+  <div style="flex-shrink:0;text-align:right">
+    <div style="font-family:monospace;font-size:9px;color:var(--text3);background:var(--bg4);padding:2px 5px;border-radius:3px;margin-bottom:4px">#${p.id}</div>
+    ${p.fp!=='None'?`<div style="font-size:9px;color:#E65100;font-weight:600">FP ${p.fp}</div>`:''}
+  </div>
+</div>`;
+}
+
+function sjDet(id){
+  const p = SJ_PRODUCTS.find(x=>x.id===id);
+  if(!p) return;
+  const html = sjBuildDet(p);
+  stk.push({id:'sj-det-'+id, html});
+  rp('sj-det-'+id, html);
+}
+
+function sjBuildDet(p){
+  const sig=p.signal;
+  const sigCol=sig==='D'?'#C8102E':sig==='W'?'#B8860B':'#2D4A8A';
+  const sigBg=sig==='D'?'linear-gradient(135deg,#9B0020,#C8102E)':sig==='W'?'linear-gradient(135deg,#8B5E00,#B8860B)':'linear-gradient(135deg,#1A2A4A,#2D4A8A)';
+  const sigLbl=sig==='D'?'DANGER':sig==='W'?'WARNING':'—';
+  const sc=SJ_SG_CFG[p.sg]||{label:p.sg,col:'#888',bg:'#eee',short:p.sg,zone:'Unclassified'};
+  const all_sgs=['A','B','C','D','E','F','G','H'];
+
+  return `<div style="background:var(--bg);min-height:100%">
+<div style="background:${sigBg};padding:16px 14px 20px;position:sticky;top:0;z-index:5">
+  <button onclick="goBack()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:rgba(255,255,255,.8);cursor:pointer;background:none;border:none;padding:0;margin-bottom:12px">
+    <i class="ti ti-arrow-left" style="font-size:13px"></i> Ships Journal
+  </button>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:19px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:6px">${p.n}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span style="font-family:monospace;font-size:11px;color:rgba(255,255,255,.7);background:rgba(0,0,0,.25);padding:2px 8px;border-radius:4px">#${p.id}</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.7);background:rgba(0,0,0,.2);padding:2px 8px;border-radius:4px">${p.cat}</span>
+        <span style="font-size:10px;font-weight:700;color:#fff;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:4px">${sc.zone}</span>
+      </div>
+    </div>
+    <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px">
+      <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.55);display:grid;place-items:center">
+        <span style="font-size:22px;font-weight:900;color:#fff;line-height:1">${p.sg}</span>
+      </div>
+      <div style="text-align:center;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.5);border-radius:7px;padding:3px 9px">
+        <div style="font-size:8px;font-weight:700;letter-spacing:.07em;color:rgba(255,255,255,.75)">SIGNAL WORD</div>
+        <div style="font-size:15px;font-weight:900;color:#fff">${sigLbl}</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div style="padding:12px 14px">
+
+  ${p.ghs.length>0?`
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+    <div class="stit" style="margin-bottom:12px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${sigCol};flex-shrink:0"></span>GHS Hazard Pictograms</div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+      ${p.ghs.map(g=>{const lbl=SJ_GHS_LABELS[g]||'GHS0'+g;return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        ${ghsDiamond(g,52)}
+        <div style="font-size:8px;font-weight:700;color:var(--text2);text-align:center;line-height:1.2;max-width:52px">${lbl}</div>
+      </div>`;}).join('')}
+    </div>
+  </div>`:''}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:7px">Flash Point</div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <i class="ti ti-flame" style="font-size:18px;color:${p.fp!=='None'?'#E65100':'var(--text3)'}"></i>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">${p.fp}</div>
+      </div>
+    </div>
+    <div style="background:${sc.bg};border:1px solid ${sc.col}30;border-radius:12px;padding:12px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${sc.col};margin-bottom:5px;opacity:.75">Storage Class</div>
+      <div style="font-size:13px;font-weight:700;color:${sc.col};line-height:1.2">${sc.label}</div>
+    </div>
+  </div>
+
+  ${p.ppe.length>0?`
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+    <div class="stit" style="margin-bottom:10px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:#005DAA;flex-shrink:0"></span>Personal Protective Equipment</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      ${p.ppe.map(k=>{const pc=SJ_PPE_CFG[k];return `<div style="display:flex;align-items:center;gap:7px;background:${pc.bg};border:1px solid ${pc.col}25;border-radius:10px;padding:8px 10px">
+        <i class="ti ${pc.icon}" style="font-size:16px;color:${pc.col};flex-shrink:0"></i>
+        <div style="font-size:10.5px;font-weight:600;color:${pc.col};line-height:1.2">${pc.label}</div>
+      </div>`;}).join('')}
+    </div>
+  </div>`:''}
+
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+    <div class="stit" style="margin-bottom:10px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:#B8860B;flex-shrink:0"></span>Storage Restrictions</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Class: <strong style="color:${sc.col}">${sc.label}</strong></div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${all_sgs.filter(s=>s!==p.sg).map(sg2=>{
+        const c=SJ_COMPAT(p.sg,sg2);
+        const c2=SJ_SG_CFG[sg2];
+        const cv=c==='+'?{col:'#155D32',bg:'#E8F5E9',icon:'ti-check',txt:'Can store together'}:
+                   c==='O'?{col:'#B8860B',bg:'#FFF8E1',icon:'ti-alert-triangle',txt:'With precautions'}:
+                           {col:'#C8102E',bg:'#FDEAED',icon:'ti-x',txt:'Must NOT store'};
+        const info=sjCompatInfo(p.sg,sg2);
+        return `<div style="background:${cv.bg};border:1px solid ${cv.col}20;border-radius:9px;padding:8px 11px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <i class="ti ${cv.icon}" style="font-size:13px;color:${cv.col};flex-shrink:0"></i>
+            <div style="font-size:11px;font-weight:700;color:${cv.col};flex:1">${c2.label}</div>
+            <div style="font-size:9px;font-weight:700;color:${cv.col};background:${cv.col}15;padding:2px 7px;border-radius:4px;flex-shrink:0">${cv.txt}</div>
+          </div>
+          ${info?`<div style="font-size:10px;color:${cv.col};opacity:.8;line-height:1.4;padding:4px 0 0 20px">${info}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <div style="background:#FFF8E1;border:1px solid #FFD700;border-radius:12px;padding:11px 13px;margin-bottom:12px;display:flex;gap:8px">
+    <i class="ti ti-info-circle" style="font-size:15px;color:#B8860B;flex-shrink:0;margin-top:1px"></i>
+    <div style="font-size:10.5px;color:#7A5200;line-height:1.5">Always consult the full Safety Data Sheet (SDS) and product label. Emergency: Chemwatch +31 104877700 (24h).</div>
+  </div>
+
+  <button onclick="sjAddToChecker('${p.id}')" style="width:100%;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent">
+    <i class="ti ti-grid-dots" style="font-size:15px"></i>Add to Storage Checker
+  </button>
+</div></div>`;
+}
+
+function sjAddToChecker(id){
+  if(!sjState.sel.includes(id)) sjState.sel.push(id);
+  sjState.tab='storage';
+  goSeg('sj');
+}
+
+function sjStorageTab(){
+  const selProds=sjState.sel.map(id=>SJ_PRODUCTS.find(p=>p.id===id)).filter(Boolean);
+  return `<div style="padding:10px 12px">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <i class="ti ti-search" style="font-size:15px;color:var(--text3);flex-shrink:0"></i>
+    <input type="text" id="sj-sc-q" placeholder="Add a product to compare..." oninput="sjScSearch(this.value)" style="flex:1;border:none;outline:none;background:transparent;font-size:13px;color:var(--text);font-family:Inter,sans-serif"/>
+  </div>
+  <div id="sj-sc-results" style="margin-bottom:4px"></div>
+
+  ${selProds.length===0?`
+  <div style="text-align:center;padding:40px 20px">
+    <div style="width:64px;height:64px;border-radius:16px;background:var(--bg3);display:grid;place-items:center;margin:0 auto 12px">
+      <i class="ti ti-grid-dots" style="font-size:32px;color:var(--text3)"></i>
+    </div>
+    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:5px">Storage Checker</div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.6;max-width:220px;margin:0 auto">Search and add 2 or more products above to instantly check if they can be stored together safely.</div>
+  </div>`:`
+
+  <div style="margin-bottom:10px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Selected (${selProds.length})</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${selProds.map(p=>{
+        const sc=SJ_SG_CFG[p.sg];const sig=p.signal;
+        const scol=sig==='D'?'#C8102E':sig==='W'?'#B8860B':'#6B7280';
+        return `<div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 11px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px">${p.n}</div>
+            <div style="display:flex;gap:4px">
+              <span style="font-size:8px;font-weight:700;padding:1px 6px;border-radius:3px;background:${scol}15;color:${scol}">${sig==='D'?'DANGER':sig==='W'?'WARNING':'—'}</span>
+              <span style="font-size:8px;padding:1px 6px;border-radius:3px;background:${sc.bg};color:${sc.col};font-weight:600">${sc.label}</span>
+            </div>
+          </div>
+          <button onclick="sjState.sel=sjState.sel.filter(x=>x!=='${p.id}');sjRender()" style="width:26px;height:26px;border-radius:50%;background:var(--bg4);border:none;cursor:pointer;display:grid;place-items:center;flex-shrink:0">
+            <i class="ti ti-x" style="font-size:12px;color:var(--text3)"></i>
+          </button>
+        </div>`;
+      }).join('')}
+      <button onclick="sjState.sel=[];sjRender()" style="padding:7px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:11px;cursor:pointer">Clear all</button>
+    </div>
+  </div>
+
+  ${selProds.length>=2 ? sjCompatMatrix(selProds) : `
+  <div style="background:var(--bg3);border-radius:10px;padding:14px;text-align:center">
+    <i class="ti ti-plus-circle" style="font-size:20px;color:var(--text3);margin-bottom:5px"></i>
+    <div style="font-size:11px;color:var(--text3)">Add one more product to see compatibility.</div>
+  </div>`}
+  `}
+</div>`;
+}
+
+// ── SJ STORAGE ROOM DIAGRAM ───────────────────────────────────────────────────
+
+function sjStorageRoom(prods){
+  if(prods.length<2) return '';
+
+  // Official 4+1 zone system — Wilhelmsen Storage & Safe Handling Poster
+  const ZONE_CFG = {
+    z1:{id:'z1', num:'1', title:'ACID AREA',     groups:['A','E'], col:'#C8102E', bg:'#FDEAED', light:'#FFF5F5'},
+    z2:{id:'z2', num:'2', title:'ALKALINE AREA', groups:['B','F'], col:'#1565C0', bg:'#E3F2FD', light:'#F0F6FF'},
+    z3:{id:'z3', num:'3', title:'SOLVENT AREA',  groups:['C','G'], col:'#7B3F00', bg:'#FBE8D5', light:'#FFF8F0'},
+    z4:{id:'z4', num:'4', title:'LOW HAZARD',    groups:['D'],     col:'#155D32', bg:'#E8F5E9', light:'#F2FBF4'},
+    z5:{id:'z5', num:'5', title:'OXIDISING',     groups:['H'],     col:'#7A5200', bg:'#FFF8E1', light:'#FFFDE8'}
+  };
+  const GROUP_ZONE = {A:'z1',B:'z2',C:'z3',D:'z4',E:'z1',F:'z2',G:'z3',H:'z5'};
+
+  // Zone compatibility (worst-case of member group pairs)
+  const ZC = {z1:{z1:'+',z2:'X',z3:'X',z4:'O',z5:'X'},z2:{z1:'X',z2:'+',z3:'X',z4:'O',z5:'O'},
+              z3:{z1:'X',z2:'X',z3:'+',z4:'O',z5:'X'},z4:{z1:'O',z2:'O',z3:'O',z4:'+',z5:'O'},
+              z5:{z1:'X',z2:'O',z3:'X',z4:'O',z5:'O'}};
+  function zc(a,b){return (ZC[a]&&ZC[a][b])||'+';}
+
+  // Zone compat explanations
+  const ZCI = {
+    'z1|z2':'KEY RULE: Acids + Alkalines must NEVER be stored together. Violent reaction risk.',
+    'z1|z3':'Acid + Solvent — incompatible dual hazards. Separate zones required.',
+    'z1|z5':'⚠ CRITICAL: Acid + Oxidising agent releases TOXIC CHLORINE GAS.',
+    'z2|z3':'Alkaline + Solvent — incompatible. Alkaline can saponify solvents.',
+    'z3|z5':'Solvent + Oxidising agent — serious FIRE risk.',
+    'z2|z5':'Alkaline + Oxidising: use caution and secondary containment.',
+    'z1|z4':'Low hazard goods: keep separate from corrosive bays. Do not stack above.',
+    'z2|z4':'Low hazard goods: keep separate from corrosive bays. Do not stack above.',
+    'z3|z4':'Low hazard goods: separate housekeeping shelves away from solvent area.',
+    'z4|z5':'Keep low-hazard goods away from direct contact with oxidising agents.'
+  };
+  function zci(a,b){return ZCI[a+'|'+b]||ZCI[b+'|'+a]||'';}
+
+  // Group products by zone
+  const zoneProds={};
+  prods.forEach(p=>{
+    const z=GROUP_ZONE[p.sg]||'z4';
+    if(!zoneProds[z])zoneProds[z]=[];
+    zoneProds[z].push(p);
+  });
+  const activeZIds=Object.keys(zoneProds);
+  if(!activeZIds.length)return '';
+
+  const n=activeZIds.length;
+  const cols=n<=3?n:Math.ceil(Math.sqrt(n));
+  const rows=Math.ceil(n/cols);
+  const W=390,H=260,M=22,IW=W-2*M,IH=H-2*M;
+  const ZW=IW/cols,ZH=IH/rows;
+
+  // Assign grid positions (try to place incompatible zones non-adjacent — greedy)
+  function zScore(a,b){const c=zc(a,b);return c==='+'?2:c==='O'?1:0;}
+  const orderedZIds=(function(){
+    if(activeZIds.length<=1)return activeZIds;
+    let best=null,bestT=-1;
+    activeZIds.forEach(start=>{
+      let ord=[start],rem=activeZIds.filter(z=>z!==start);
+      while(rem.length){
+        const last=ord[ord.length-1];let bi=0;
+        rem.forEach((z,i)=>{if(zScore(last,z)>zScore(last,rem[bi]))bi=i;});
+        ord.push(rem[bi]);rem.splice(bi,1);
+      }
+      const tot=ord.slice(0,-1).reduce((sum,z,i)=>sum+zScore(z,ord[i+1]),0);
+      if(tot>bestT){bestT=tot;best=ord;}
+    });
+    return best;
+  })();
+
+  const zones=orderedZIds.map((zid,i)=>({
+    ...ZONE_CFG[zid], col2:i, row2:Math.floor(i/cols), prds:zoneProds[zid]
+  }));
+  // Fix grid assignment
+  zones.forEach((z,i)=>{z.col2=i%cols;z.row2=Math.floor(i/cols);});
+
+  let s=`<svg viewBox="0 0 ${W} ${H+22}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;border-radius:8px">`;
+  s+=`<rect width="${W}" height="${H+22}" fill="#DDE3EC"/>`;
+  s+=`<text x="${W/2}" y="13" text-anchor="middle" font-size="7.5" font-weight="700" fill="#4A5568" letter-spacing="1.3" font-family="Arial,sans-serif">CHEMICAL STORAGE — OFFICIAL ZONE LAYOUT (WILHELMSEN)</text>`;
+
+  // Room floor
+  s+=`<defs><pattern id="hw" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#B0B8C8" stroke-width="2"/></pattern></defs>`;
+  s+=`<rect x="${M-9}" y="${M-9}" width="${IW+18}" height="${IH+9}" fill="url(#hw)" rx="5"/>`;
+  s+=`<rect x="${M}" y="${M}" width="${IW}" height="${IH}" fill="#F8F7F2" stroke="#2D3748" stroke-width="2" rx="4"/>`;
+
+  zones.forEach(z=>{
+    const x=M+z.col2*ZW,y=M+z.row2*ZH,P=3;
+    const zW=ZW-2*P,zH=ZH-2*P;
+    // Zone fill
+    s+=`<rect x="${x+P}" y="${y+P}" width="${zW}" height="${zH}" fill="${z.light}" stroke="${z.col}" stroke-width="1.5" rx="4"/>`;
+    // Zone header — two-line
+    const hh=22;
+    s+=`<rect x="${x+P}" y="${y+P}" width="${zW}" height="${hh}" fill="${z.col}" rx="4"/>`;
+    s+=`<rect x="${x+P}" y="${y+P+hh-4}" width="${zW}" height="4" fill="${z.col}"/>`;
+    s+=`<text x="${x+P+zW/2}" y="${y+P+9}" text-anchor="middle" font-size="7" font-weight="700" fill="rgba(255,255,255,.75)" font-family="Arial,sans-serif">ZONE ${z.num}</text>`;
+    s+=`<text x="${x+P+zW/2}" y="${y+P+19}" text-anchor="middle" font-size="7.5" font-weight="900" fill="white" font-family="Arial,sans-serif">${z.title}</text>`;
+
+    // Sub-group labels (which groups A-H are in this zone)
+    const grpsPresent=[...new Set(z.prds.map(p=>p.sg))];
+    const glbls=grpsPresent.map(g=>`Grp ${g}`).join(' + ');
+    s+=`<text x="${x+P+zW/2}" y="${y+P+hh+9}" text-anchor="middle" font-size="7" fill="${z.col}" font-weight="700" font-family="Arial,sans-serif">${glbls}</text>`;
+
+    // Shelf line
+    s+=`<line x1="${x+P+4}" y1="${y+P+zH-10}" x2="${x+P+zW-4}" y2="${y+P+zH-10}" stroke="${z.col}" stroke-width="0.7" opacity="0.3"/>`;
+
+    // Drum icons (top-view circles with product abbreviation)
+    const dR=7,dSX=16,dSY=15,dpr=Math.max(1,Math.floor((zW-10)/dSX));
+    const dsx=x+P+8,dsy=y+P+hh+12;
+    z.prds.slice(0,10).forEach((p,i)=>{
+      const dc=i%dpr,dr=Math.floor(i/dpr);
+      const dx=dsx+dc*dSX,dy=dsy+dr*dSY;
+      const sc=SJ_SG_CFG[p.sg];
+      const dc2=sc?sc.col:z.col;
+      if(dy+dR<y+P+zH-12){
+        s+=`<ellipse cx="${dx+1}" cy="${dy+2}" rx="${dR}" ry="${dR*0.35}" fill="rgba(0,0,0,.1)"/>`;
+        s+=`<circle cx="${dx}" cy="${dy}" r="${dR}" fill="${dc2}"/>`;
+        s+=`<circle cx="${dx}" cy="${dy}" r="${dR-1.5}" fill="none" stroke="white" stroke-width="0.8" opacity="0.35"/>`;
+        const abbr=(p.n.split(' ')[0]||'').substring(0,5);
+        s+=`<text x="${dx}" y="${dy+2.5}" text-anchor="middle" font-size="4.5" fill="white" font-weight="700" font-family="Arial,sans-serif">${abbr}</text>`;
+        // Group letter on drum
+        s+=`<text x="${dx+dR-1}" y="${dy-dR+4}" text-anchor="middle" font-size="4" fill="${dc2}" font-weight="900" font-family="Arial,sans-serif">${p.sg}</text>`;
+      }
+    });
+    if(z.prds.length>10){
+      s+=`<text x="${x+P+zW-4}" y="${y+P+zH-3}" text-anchor="end" font-size="7.5" fill="${z.col}" font-weight="800" font-family="Arial,sans-serif">+${z.prds.length-10}</text>`;
+    }
+  });
+
+  // Barriers between adjacent zones
+  zones.forEach((za,ia)=>{
+    zones.forEach((zb,ib)=>{
+      if(ib<=ia)return;
+      const c=zc(za.id,zb.id);
+      if(c==='+')return;
+      const bcol=c==='X'?'#C8102E':'#B8860B',bop=c==='X'?1:0.8;
+      // Horizontal
+      if(za.row2===zb.row2&&Math.abs(za.col2-zb.col2)===1){
+        const lz=za.col2<zb.col2?za:zb;
+        const bx=M+(lz.col2+1)*ZW,by=M+lz.row2*ZH+12,bh=ZH-24;
+        s+=`<rect x="${bx-3.5}" y="${by}" width="7" height="${bh}" fill="${bcol}" rx="3" opacity="${bop}"/>`;
+        const my=by+bh/2;
+        s+=`<circle cx="${bx}" cy="${my}" r="10" fill="${bcol}" opacity="0.2"/>`;
+        s+=`<circle cx="${bx}" cy="${my}" r="9" fill="${bcol}"/>`;
+        s+=`<text x="${bx}" y="${my+4.5}" text-anchor="middle" font-size="13" font-weight="900" fill="white" font-family="Arial,sans-serif">${c==='X'?'✕':'!'}</text>`;
+      }
+      // Vertical
+      if(za.col2===zb.col2&&Math.abs(za.row2-zb.row2)===1){
+        const tz=za.row2<zb.row2?za:zb;
+        const by2=M+(tz.row2+1)*ZH,bx2=M+tz.col2*ZW+12,bw=ZW-24;
+        s+=`<rect x="${bx2}" y="${by2-3.5}" width="${bw}" height="7" fill="${bcol}" rx="3" opacity="${bop}"/>`;
+        const mx=bx2+bw/2;
+        s+=`<circle cx="${mx}" cy="${by2}" r="10" fill="${bcol}" opacity="0.2"/>`;
+        s+=`<circle cx="${mx}" cy="${by2}" r="9" fill="${bcol}"/>`;
+        s+=`<text x="${mx}" y="${by2+4.5}" text-anchor="middle" font-size="13" font-weight="900" fill="white" font-family="Arial,sans-serif">${c==='X'?'✕':'!'}</text>`;
+      }
+    });
+  });
+
+  // Front wall + door
+  s+=`<rect x="${M-9}" y="${M+IH}" width="${IW+18}" height="9" fill="url(#hw)"/>`;
+  const dgW=34,dgX=M+IW/2-dgW/2;
+  s+=`<rect x="${dgX}" y="${M+IH}" width="${dgW}" height="9" fill="#DDE3EC"/>`;
+  s+=`<path d="M${dgX} ${M+IH} A${dgW} ${dgW} 0 0 0 ${dgX+dgW} ${M+IH}" fill="none" stroke="#888" stroke-width="1" stroke-dasharray="3,2"/>`;
+  s+=`<text x="${M+IW/2}" y="${H+18}" text-anchor="middle" font-size="8" fill="#888" font-family="Arial,sans-serif">▲  ENTRANCE</text>`;
+  s+=`<rect x="${M}" y="${M}" width="${IW}" height="${IH}" fill="none" stroke="#1F2937" stroke-width="1.5" rx="4"/>`;
+  s+=`</svg>`;
+
+  const rid='sj-room-'+Math.random().toString(36).slice(2,7);
+
+  // Pair incompatibilities for the text list below the diagram
+  const activePairs=[];
+  for(let i=0;i<activeZIds.length;i++)for(let j=i+1;j<activeZIds.length;j++){
+    const a=activeZIds[i],b=activeZIds[j],c=zc(a,b);
+    if(c!=='+')activePairs.push({a,b,c,info:zci(a,b)});
+  }
+
+  return `
+<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px">
+    <div style="flex:1;min-width:0">
+      <div class="stit" style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+        <i class="ti ti-layout-2" style="font-size:14px;color:var(--accent)"></i>
+        Storage Room Plan
+        <span style="font-size:9px;font-weight:600;color:#fff;background:var(--accent);padding:1px 7px;border-radius:10px">Official Zones</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);line-height:1.5">Based on Wilhelmsen Storage & Safe Handling Poster · 4 official zones + Oxidising area · ✕ = zones must NOT be adjacent</div>
+    </div>
+    <button onclick="sjPrint()" style="display:flex;align-items:center;gap:5px;padding:8px 13px;background:linear-gradient(135deg,#003057,#005DAA);border:none;border-radius:10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,93,170,.35)">
+      <i class="ti ti-printer" style="font-size:13px"></i>Print / PDF
+    </button>
+  </div>
+  <div id="${rid}" style="border-radius:8px;overflow:hidden">${s}</div>
+
+  <!-- Zone key -->
+  <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+    ${Object.values(ZONE_CFG).filter(zc=>activeZIds.includes(zc.id)).map(zc=>`
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:${zc.bg};border:1px solid ${zc.col}25">
+      <div style="width:9px;height:9px;border-radius:50%;background:${zc.col};flex-shrink:0"></div>
+      <span style="font-size:9px;font-weight:700;color:${zc.col}">Zone ${zc.num} – ${zc.title}</span>
+    </div>`).join('')}
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:#FDEAED;border:1px solid #C8102E25;margin-left:auto">
+      <div style="width:16px;height:5px;border-radius:3px;background:#C8102E"></div>
+      <span style="font-size:9px;font-weight:700;color:#C8102E">✕ Must NOT be adjacent</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;background:#FFF8E1;border:1px solid #B8860B25">
+      <div style="width:13px;height:4px;border-radius:2px;background:#B8860B"></div>
+      <span style="font-size:9px;font-weight:700;color:#B8860B">! Caution</span>
+    </div>
+  </div>
+
+  ${activePairs.length?`
+  <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px">Zone Incompatibilities in This Selection</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${activePairs.map(({a,b,c,info})=>{
+        const zA=ZONE_CFG[a],zB=ZONE_CFG[b];
+        const cv=c==='X'?{col:'#C8102E',bg:'#FDEAED',icon:'ti-x'}:{col:'#B8860B',bg:'#FFF8E1',icon:'ti-alert-triangle'};
+        return `<div style="background:${cv.bg};border:1px solid ${cv.col}20;border-radius:8px;padding:8px 11px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:${info?4:0}px">
+            <i class="ti ${cv.icon}" style="font-size:13px;color:${cv.col};flex-shrink:0"></i>
+            <div style="font-size:11px;font-weight:700;color:${cv.col}">Zone ${zA.num} (${zA.title}) ↔ Zone ${zB.num} (${zB.title})</div>
+          </div>
+          ${info?`<div style="font-size:10px;color:${cv.col};opacity:.85;line-height:1.4;padding-left:19px">${info}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`:''}
+</div>`;
+}
+
+
+function sjPrint(){
+  const prods=sjState.sel.map(id=>SJ_PRODUCTS.find(p=>p.id===id)).filter(Boolean);
+  if(prods.length<2)return;
+  const svgEl=document.querySelector('[id^="sj-room-"] svg');
+  if(!svgEl){alert('Open the Storage Checker and add products first.');return;}
+  const svgStr=svgEl.outerHTML
+    .replace(/fill="var\([^)]+\)"/g,'fill="#F8F8F8"')
+    .replace(/stroke="var\([^)]+\)"/g,'stroke="#CCCCCC"')
+    .replace(/color="var\([^)]+\)"/g,'');
+  const sgs=[...new Set(prods.map(p=>p.sg))];
+  const pairs=[];
+  for(let i=0;i<prods.length;i++)for(let j=i+1;j<prods.length;j++){
+    const c=SJ_COMPAT(prods[i].sg,prods[j].sg);
+    pairs.push({a:prods[i],b:prods[j],c});
+  }
+
+  // Build PPE legend items for the print window (no Tabler icons — use symbols)
+  const PPE_SYM={E:{sym:'👁',label:'Eye Protection',col:'#0077A8',bg:'#E0F4FC'},
+                 G:{sym:'🧤',label:'Gloves',col:'#155D32',bg:'#E8F5E9'},
+                 A:{sym:'🥼',label:'Chemical Apron',col:'#B45000',bg:'#FBE8D5'},
+                 F:{sym:'🛡',label:'Face Shield',col:'#5B2C6F',bg:'#F3E5F5'},
+                 R:{sym:'😷',label:'Respirator',col:'#37474F',bg:'#ECEFF1'}};
+
+  // GHS label map for print
+  const GHS_LBL={2:'Flammable',3:'Oxidising',5:'Corrosive',6:'Acute Toxic',7:'Harmful',8:'Health Haz.',9:'Environmental'};
+  const GHS_COL={2:'#E65100',3:'#FF6B00',5:'#1565C0',6:'#212121',7:'#E65100',8:'#6A0080',9:'#2E7D32'};
+
+  // Collect all unique PPE across products
+  const allPPE=[...new Set(prods.flatMap(p=>p.ppe))];
+  // Collect all unique GHS across products
+  const allGHS=[...new Set(prods.flatMap(p=>p.ghs))].sort();
+
+  // Check if corrosive groups present (A, B, C) — for mandatory PPE note
+  const hasCorrosive=prods.some(p=>['A','B','C'].includes(p.sg));
+  const hasSolvent=prods.some(p=>['C','G'].includes(p.sg));
+
+  const win=window.open('','_blank','width=820,height=900');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Chemical Safety Reference — Wilhelmsen Ships Service</title>
+<style>
+@page{size:A4 portrait;margin:12mm 14mm}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:9.5px;color:#1a1a1a}
+/* ── Header ── */
+.hdr{display:flex;align-items:center;gap:14px;padding-bottom:10px;border-bottom:3px solid #003057;margin-bottom:11px}
+.logo{width:44px;height:44px;background:#003057;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#FFD700;font-size:19px;font-weight:900;flex-shrink:0}
+h1{font-size:16px;color:#003057;margin:0 0 1px;font-weight:900}
+.sub{font-size:8.5px;color:#666}
+/* ── Section titles ── */
+.sec{margin-top:13px;margin-bottom:7px;border-bottom:2px solid #003057;padding-bottom:3px}
+.sec h2{font-size:11px;font-weight:900;color:#003057;margin:0;text-transform:uppercase;letter-spacing:.07em}
+/* ── Product summary box ── */
+.prodbox{font-size:8.5px;background:#f5f7fa;border:1px solid #dde1e9;border-radius:4px;padding:6px 10px;margin-bottom:10px;line-height:1.7}
+/* ── Room diagram ── */
+.svgwrap{text-align:center;margin-bottom:6px}
+svg{max-width:100%;height:auto}
+/* ── Legend ── */
+.legend{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.li{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:8.5px;font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.ck{display:flex;flex-wrap:wrap;gap:10px;margin-top:7px}
+.cki{display:flex;align-items:center;gap:4px;font-size:8.5px;font-weight:700}
+/* ── Tables ── */
+table{width:100%;border-collapse:collapse;font-size:8.5px}
+th{background:#003057;color:white;padding:5px 7px;text-align:left;font-size:8.5px;font-weight:700}
+td{padding:5px 7px;border-bottom:1px solid #e4e4e4;vertical-align:middle}
+tr:nth-child(even) td{background:#f8f9fb}
+.X{color:#C8102E!important;font-weight:800;text-align:center;background:#FDEAED!important}
+.O{color:#B8860B!important;font-weight:800;text-align:center;background:#FFF8E1!important}
+.OK{color:#155D32!important;font-weight:800;text-align:center;background:#E8F5E9!important}
+/* ── PPE badges ── */
+.ppe-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ppe-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:700;white-space:nowrap}
+/* ── GHS diamonds ── */
+.ghs-wrap{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ghs-d{width:22px;height:22px;transform:rotate(45deg);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:900}
+/* ── Safety rules ── */
+.rules{margin-top:4px}
+.rule{display:flex;gap:7px;margin-bottom:5px;align-items:flex-start}
+.rule-dot{width:6px;height:6px;border-radius:50%;background:#003057;margin-top:3px;flex-shrink:0}
+.alert-box{padding:8px 11px;border-radius:5px;margin-top:9px;line-height:1.55;font-size:8.5px}
+.alert-red{background:#FDEAED;border:1px solid #C8102E;color:#8B0000}
+.alert-amber{background:#FFF8E1;border:1px solid #FFD700;color:#7A5200}
+/* ── Emergency ── */
+.emergency{background:#003057;color:white;padding:9px 13px;border-radius:6px;margin-top:10px;display:flex;align-items:center;justify-content:space-between}
+.emg-left{font-size:9px;opacity:.85}
+.emg-num{font-size:15px;font-weight:900;letter-spacing:.03em}
+/* ── Footer ── */
+.ftr{margin-top:10px;font-size:7.5px;color:#aaa;border-top:1px solid #ddd;padding-top:6px;display:flex;justify-content:space-between}
+.page-break{page-break-before:always}
+</style></head><body>
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="logo">W</div>
+  <div>
+    <h1>Chemical Safety Reference — Storage & Handling</h1>
+    <div class="sub">Wilhelmsen Ships Service &nbsp;·&nbsp; UNITOR™ / NALFLEET™ &nbsp;·&nbsp; Ships Journal V2.0-032023 &nbsp;·&nbsp; Storage & Safe Handling Poster V01</div>
+  </div>
+</div>
+
+<!-- ══ PRODUCTS ASSESSED ══ -->
+<div class="prodbox"><strong>Products assessed (${prods.length}):</strong>&nbsp; ${prods.map(p=>`${p.n} <span style="color:#888;font-family:monospace">#${p.id}</span>`).join(' &nbsp;·&nbsp; ')}</div>
+
+<!-- ══ STORAGE ROOM DIAGRAM ══ -->
+<div class="sec"><h2>Storage Room Layout</h2></div>
+<div class="svgwrap">${svgStr}</div>
+<div class="legend">
+${sgs.map(sg=>{const sc=SJ_SG_CFG[sg]||{label:sg,col:'#888',bg:'#eee'};return `<div class="li" style="background:${sc.bg};color:${sc.col};border:1px solid ${sc.col}30"><div class="dot" style="background:${sc.col}"></div>Grp ${sg} – ${sc.label}</div>`;}).join('')}
+</div>
+<div class="ck">
+  <div class="cki" style="color:#C8102E"><span style="width:18px;height:5px;background:#C8102E;border-radius:3px;display:inline-block"></span>&nbsp;✕ Must NOT be adjacent</div>
+  <div class="cki" style="color:#B8860B"><span style="width:14px;height:3px;background:#B8860B;border-radius:2px;display:inline-block"></span>&nbsp;! Adjacent with precautions only</div>
+  <div class="cki" style="color:#155D32">✓ May be stored in same zone</div>
+</div>
+
+<!-- ══ COMPATIBILITY ══ -->
+<div class="sec"><h2>Storage Compatibility</h2></div>
+<table><tr><th>Product A</th><th>Product B</th><th style="width:120px">Result</th><th>Safety Note</th></tr>
+${pairs.map(({a,b,c})=>{
+  const cv=c==='X'?'X':c==='O'?'O':'OK';
+  const lbl=c==='X'?'✕ MUST NOT STORE TOGETHER':c==='O'?'! WITH PRECAUTIONS':'✓ OK TO STORE TOGETHER';
+  const info=sjCompatInfo(a.sg,b.sg);
+  return `<tr><td><strong>${a.n}</strong><br><span style="color:#888;font-family:monospace">#${a.id} · Grp ${a.sg}</span></td><td><strong>${b.n}</strong><br><span style="color:#888;font-family:monospace">#${b.id} · Grp ${b.sg}</span></td><td class="${cv}">${lbl}</td><td style="font-size:8px;color:#555;line-height:1.4">${info||'—'}</td></tr>`;
+}).join('')}
+</table>
+
+<!-- ══ PERSONAL PROTECTIVE EQUIPMENT ══ -->
+<div class="sec" style="margin-top:14px"><h2>Personal Protective Equipment (PPE)</h2></div>
+<table>
+  <tr><th style="width:30%">Product</th><th style="width:12%">Group</th><th style="width:12%">Signal</th><th>Required PPE</th></tr>
+  ${prods.map(p=>{
+    const sc=SJ_SG_CFG[p.sg]||{label:p.sg,col:'#888',bg:'#eee'};
+    const sig=p.signal==='D'?'DANGER':p.signal==='W'?'WARNING':'—';
+    const scol=p.signal==='D'?'#C8102E':p.signal==='W'?'#B8860B':'#555';
+    const ppeHtml=p.ppe.length>0
+      ? p.ppe.map(k=>{const pc=PPE_SYM[k]||{sym:'?',label:k,col:'#888',bg:'#eee'};return `<span class="ppe-badge" style="background:${pc.bg};color:${pc.col};border:1px solid ${pc.col}25">${pc.sym} ${pc.label}</span>`;}).join('')
+      : '<span style="color:#888;font-style:italic">Standard gloves recommended</span>';
+    return `<tr>
+      <td><strong>${p.n}</strong><br><span style="color:#aaa;font-size:7.5px;font-family:monospace">#${p.id}</span></td>
+      <td><span style="font-weight:800;font-size:11px;color:${sc.col}">${p.sg}</span><br><span style="font-size:7.5px;color:${sc.col}">${sc.label}</span></td>
+      <td style="font-weight:800;color:${scol}">${sig}</td>
+      <td><div class="ppe-row">${ppeHtml}</div></td>
+    </tr>`;
+  }).join('')}
+</table>
+${hasCorrosive?`<div class="alert-box alert-red" style="margin-top:8px"><strong>⚠ Corrosive groups present (A, B or C):</strong> Always wear eye protection, chemical-resistant gloves AND chemical apron. Add face shield when risk of splashing. Ensure eyewash station is accessible.</div>`:''}
+${hasSolvent?`<div class="alert-box alert-amber" style="margin-top:5px"><strong>⚡ Solvent-based products present (C or G):</strong> Ensure good ventilation. Keep away from heat, sparks and open flames. No hot work in the storage area.</div>`:''}
+
+<!-- ══ GHS HAZARD PICTOGRAMS ══ -->
+<div class="sec" style="margin-top:14px"><h2>GHS Hazard Pictograms</h2></div>
+<table>
+  <tr><th style="width:32%">Product</th><th>GHS Hazard Symbols</th><th style="width:18%">Flash Point</th></tr>
+  ${prods.map(p=>{
+    const ghsHtml=p.ghs.length>0
+      ? p.ghs.map(g=>`<span title="${GHS_LBL[g]||'GHS0'+g}" style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;margin-right:7px;vertical-align:top">
+          <span class="ghs-d" style="background:${GHS_COL[g]||'#888'}18;border:1.5px solid ${GHS_COL[g]||'#888'};color:${GHS_COL[g]||'#888'}">GHS0${g}</span>
+          <span style="font-size:6.5px;color:${GHS_COL[g]||'#888'};font-weight:600;max-width:32px;text-align:center;line-height:1.2;transform:rotate(-45deg);display:block">${GHS_LBL[g]||''}</span>
+        </span>`).join('')
+      : '<span style="color:#aaa;font-style:italic;font-size:8px">No GHS hazard pictograms</span>';
+    const fpCol=p.fp!=='None'?'#E65100':'#aaa';
+    return `<tr>
+      <td><strong>${p.n}</strong><br><span style="color:#aaa;font-size:7.5px;font-family:monospace">#${p.id}</span></td>
+      <td style="padding:8px 7px">${ghsHtml}</td>
+      <td style="font-weight:700;color:${fpCol}">${p.fp}</td>
+    </tr>`;
+  }).join('')}
+</table>
+<div style="margin-top:7px;font-size:8px;color:#666;line-height:1.5"><strong>Note:</strong> GHS pictograms shown are based on Ships Journal classification. Always verify against the current SDS and product label — exact pictograms may vary by product formulation and regional regulations.</div>
+
+<!-- ══ PAGE 2 ══ -->
+<div class="page-break"></div>
+
+<!-- ══ PRODUCT REFERENCE TABLE ══ -->
+<div class="hdr" style="margin-top:0">
+  <div class="logo">W</div>
+  <div><h1>Chemical Safety Reference — Page 2</h1>
+  <div class="sub">Wilhelmsen Ships Service · UNITOR™ / NALFLEET™ · Continuation</div></div>
+</div>
+
+<div class="sec"><h2>Full Product Reference</h2></div>
+<table>
+  <tr><th>Product</th><th>Part #</th><th>Category</th><th>Grp</th><th>Storage Zone</th><th>Signal</th><th>Flash Pt.</th><th>GHS</th><th>PPE</th></tr>
+  ${prods.map(p=>{
+    const sc=SJ_SG_CFG[p.sg]||{label:p.sg,col:'#888',bg:'#eee',zone:''};
+    const sig=p.signal==='D'?'DANGER':p.signal==='W'?'WARNING':'—';
+    const scol=p.signal==='D'?'#C8102E':p.signal==='W'?'#B8860B':'#555';
+    const ghsTxt=p.ghs.map(g=>'GHS0'+g).join(', ')||'—';
+    const ppeTxt=p.ppe.map(k=>(PPE_SYM[k]||{label:k}).label).join(', ')||'Std. gloves';
+    return `<tr>
+      <td><strong>${p.n}</strong></td>
+      <td style="font-family:monospace;font-size:8px">${p.id}</td>
+      <td style="font-size:8px">${p.cat}</td>
+      <td style="font-weight:900;font-size:12px;color:${sc.col};text-align:center">${p.sg}</td>
+      <td style="font-size:8px;color:${sc.col};font-weight:600">${sc.zone||sc.label}</td>
+      <td style="font-weight:800;color:${scol}">${sig}</td>
+      <td style="color:${p.fp!=='None'?'#E65100':'#aaa'}">${p.fp}</td>
+      <td style="font-size:7.5px">${ghsTxt}</td>
+      <td style="font-size:7.5px">${ppeTxt}</td>
+    </tr>`;
+  }).join('')}
+</table>
+
+<!-- ══ HANDLING & EMERGENCY RULES ══ -->
+<div class="sec" style="margin-top:14px"><h2>Handling & Emergency Rules</h2></div>
+<div class="rules">
+  <div class="rule"><div class="rule-dot"></div><div>Wear <strong>gloves and eye protection</strong> for all products. Add <strong>face shield and chemical apron</strong> for corrosive groups A, B and C.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div>Use <strong>good ventilation</strong> for all solvent-based products (Groups C and G). Keep away from heat, sparks and open flames.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div><strong>Never mix products</strong> unless a written procedure and SDS confirm compatibility.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div>Keep containers <strong>closed, upright, labelled</strong> and in original packaging where possible.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div><strong>Return each product to its assigned zone</strong> after use. Never leave products in the wrong storage area.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div>For <strong>spills:</strong> isolate area, stop leak if safe, contain, prevent drain entry and follow local emergency and SDS instructions.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div>For <strong>eye contact:</strong> rinse immediately with plenty of water for at least 15 minutes and seek medical attention.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div>For <strong>skin contact:</strong> remove contaminated clothing and wash thoroughly with soap and water.</div></div>
+  <div class="rule"><div class="rule-dot"></div><div>For <strong>inhalation:</strong> move to fresh air immediately. If symptoms persist, seek medical attention.</div></div>
+</div>
+
+<!-- Barrier zones reminder -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+  <div style="background:#FDEAED;border:1px solid #C8102E;border-radius:5px;padding:8px 10px">
+    <div style="font-size:9px;font-weight:800;color:#C8102E;margin-bottom:3px">ZONE 1 – ACID AREA (Grp A + E)</div>
+    <div style="font-size:8px;color:#8B0000;line-height:1.4">Acid-resistant trays, clear acid signage and eyewash access. Never place alkaline products in the same bund.</div>
+  </div>
+  <div style="background:#E3F2FD;border:1px solid #1565C0;border-radius:5px;padding:8px 10px">
+    <div style="font-size:9px;font-weight:800;color:#1565C0;margin-bottom:3px">ZONE 2 – ALKALINE AREA (Grp B + F)</div>
+    <div style="font-size:8px;color:#0D47A1;line-height:1.4">Separate completely from acid products. Avoid contact with incompatible metals where SDS warns.</div>
+  </div>
+  <div style="background:#FBE8D5;border:1px solid #7B3F00;border-radius:5px;padding:8px 10px">
+    <div style="font-size:9px;font-weight:800;color:#7B3F00;margin-bottom:3px">ZONE 3 – SOLVENT AREA (Grp C + G)</div>
+    <div style="font-size:8px;color:#5D2E00;line-height:1.4">Store cool and ventilated, away from ignition sources, oxidisers and hot work. Even above 61 °C flash point — ventilation required.</div>
+  </div>
+  <div style="background:#E8F5E9;border:1px solid #155D32;border-radius:5px;padding:8px 10px">
+    <div style="font-size:9px;font-weight:800;color:#155D32;margin-bottom:3px">ZONE 4 – LOW HAZARD (Grp D)</div>
+    <div style="font-size:8px;color:#0A3D1A;line-height:1.4">Keep separate from corrosive bays. Away from food, potable water and personal storage. Separate housekeeping shelves.</div>
+  </div>
+</div>
+
+<!-- ══ EMERGENCY ══ -->
+<div class="emergency">
+  <div>
+    <div class="emg-left">24-HOUR CHEMICAL EMERGENCY LINE</div>
+    <div class="emg-num">Chemwatch: +31 104877700</div>
+  </div>
+  <div style="text-align:right">
+    <div class="emg-left">Also contact ship's Master and notify</div>
+    <div style="font-size:9px;font-weight:700">nearest port authority if required</div>
+  </div>
+</div>
+
+<div class="alert-box alert-amber" style="margin-top:9px">⚠ This document is based on Wilhelmsen Ships Journal classification (V2.0-032023) and Storage & Safe Handling Poster (V01). Always consult the full Safety Data Sheet (SDS) for each individual product before handling or storage. Comply with applicable flag state regulations, SOLAS Ch.II-2, MARPOL Annex II, and IBC/IGC Codes.</div>
+
+<div class="ftr">
+  <span>Wilhelmsen Ships Service — Chemical Safety Reference &nbsp;|&nbsp; UNITOR™ / NALFLEET™</span>
+  <span>Generated: ${new Date().toLocaleString()}</span>
+</div>
+</body></html>`);
+  win.document.close();
+  win.onload=()=>setTimeout(()=>win.print(),400);
+}
+
+
+function sjCompatMatrix(prods){
+  let hasX=false,hasO=false;
+  const pairs=[];
+  for(let i=0;i<prods.length;i++)for(let j=i+1;j<prods.length;j++){
+    const c=SJ_COMPAT(prods[i].sg,prods[j].sg);
+    if(c==='X')hasX=true; if(c==='O')hasO=true;
+    pairs.push({a:prods[i],b:prods[j],c});
+  }
+  const v=hasX?{col:'#C8102E',bg:'#FDEAED',icon:'ti-alert-octagon',head:'INCOMPATIBLE',sub:'One or more products MUST NOT be stored together. See details below.'}:
+            hasO?{col:'#B8860B',bg:'#FFF8E1',icon:'ti-alert-triangle',head:'CAUTION — PRECAUTIONS REQUIRED',sub:'Some products require precautions or separation when stored together.'}:
+                 {col:'#155D32',bg:'#E8F5E9',icon:'ti-circle-check',head:'SAFE TO STORE TOGETHER',sub:'All selected products may be stored together based on their chemical classification.'};
+  return `
+<div style="background:${v.bg};border:2px solid ${v.col};border-radius:14px;padding:14px;margin-bottom:10px">
+  <div style="display:flex;align-items:flex-start;gap:9px">
+    <i class="ti ${v.icon}" style="font-size:22px;color:${v.col};flex-shrink:0;margin-top:1px"></i>
+    <div>
+      <div style="font-size:13px;font-weight:800;color:${v.col};margin-bottom:3px">${v.head}</div>
+      <div style="font-size:11px;color:${v.col};opacity:.8;line-height:1.4">${v.sub}</div>
+    </div>
+  </div>
+</div>
+
+<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+  <div class="stit" style="margin-bottom:10px">Pairwise Result</div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    ${pairs.map(({a,b,c})=>{
+      const cv=c==='+'?{col:'#155D32',bg:'#E8F5E9',icon:'ti-check',txt:'OK'}:
+               c==='O'?{col:'#B8860B',bg:'#FFF8E1',icon:'ti-alert-triangle',txt:'CAUTION'}:
+                       {col:'#C8102E',bg:'#FDEAED',icon:'ti-x',txt:'NO'};
+      const info=sjCompatInfo(a.sg,b.sg);
+      return `<div style="background:${cv.bg};border:1px solid ${cv.col}25;border-radius:10px;padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:22px;height:22px;border-radius:6px;background:${cv.col};display:grid;place-items:center;flex-shrink:0">
+            <i class="ti ${cv.icon}" style="font-size:11px;color:#fff"></i>
+          </div>
+          <div style="flex:1;min-width:0;font-size:11px;font-weight:700;color:${cv.col};line-height:1.3">${a.n} + ${b.n}</div>
+          <div style="font-size:9px;font-weight:800;color:${cv.col};background:${cv.col}20;padding:2px 8px;border-radius:4px;flex-shrink:0">${cv.txt}</div>
+        </div>
+        ${info?`<div style="font-size:10px;color:${cv.col};opacity:.8;line-height:1.4;padding:5px 0 0 29px">${info}</div>`:''}
+      </div>`;
+    }).join('')}
+  </div>
+</div>
+
+${prods.length>=2?`
+<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;overflow-x:auto;margin-bottom:6px">
+  <div class="stit" style="margin-bottom:10px">Storage Matrix</div>
+  <table style="border-collapse:collapse;width:100%;font-size:10px">
+    <tr>
+      <td style="padding:3px 6px"></td>
+      ${prods.map(p=>`<th style="padding:3px 4px;text-align:center;color:var(--text2);font-weight:600;line-height:1.2;max-width:54px;min-width:40px;word-break:break-word">${p.n.split(' ').slice(0,2).join(' ')}</th>`).join('')}
+    </tr>
+    ${prods.map((pa,i)=>`<tr>
+      <td style="padding:4px 6px;color:var(--text2);font-weight:600;line-height:1.2;max-width:80px;word-break:break-word">${pa.n.split(' ').slice(0,2).join(' ')}</td>
+      ${prods.map((pb,j)=>{
+        if(i===j) return '<td style="padding:3px;text-align:center"><div style="width:28px;height:28px;border-radius:7px;background:var(--bg3);display:grid;place-items:center;margin:auto;color:var(--text3);font-size:12px">·</div></td>';
+        const c=SJ_COMPAT(pa.sg,pb.sg);
+        const col=c==='+'?'#155D32':c==='O'?'#B8860B':'#C8102E';
+        const bg=c==='+'?'#E8F5E9':c==='O'?'#FFF8E1':'#FDEAED';
+        const icon=c==='+'?'ti-check':c==='O'?'ti-alert-triangle':'ti-x';
+        return `<td style="padding:3px;text-align:center"><div style="width:28px;height:28px;border-radius:7px;background:${bg};border:1px solid ${col}25;display:grid;place-items:center;margin:auto"><i class="ti ${icon}" style="font-size:12px;color:${col}"></i></div></td>`;
+      }).join('')}
+    </tr>`).join('')}
+  </table>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px">
+    ${[{c:'+',col:'#155D32',bg:'#E8F5E9',icon:'ti-check',txt:'OK to store together'},
+       {c:'O',col:'#B8860B',bg:'#FFF8E1',icon:'ti-alert-triangle',txt:'With precautions'},
+       {c:'X',col:'#C8102E',bg:'#FDEAED',icon:'ti-x',txt:'Must NOT store'}].map(v=>`<div style="display:flex;align-items:center;gap:5px">
+      <div style="width:18px;height:18px;border-radius:4px;background:${v.bg};border:1px solid ${v.col}30;display:grid;place-items:center">
+        <i class="ti ${v.icon}" style="font-size:9px;color:${v.col}"></i>
+      </div>
+      <span style="font-size:9.5px;color:var(--text3)">${v.txt}</span>
+    </div>`).join('')}
+  </div>
+</div>`:'' }
+${sjStorageRoom(prods)}`;
+}
+
+function sjScSearch(q){
+  const el=document.getElementById('sj-sc-results');
+  if(!el)return;
+  if(!q||q.length<2){el.innerHTML='';return;}
+  const ql=q.toLowerCase();
+  const res=SJ_PRODUCTS.filter(p=>!sjState.sel.includes(p.id)&&(p.n.toLowerCase().includes(ql)||p.id.includes(q))).slice(0,6);
+  if(res.length===0){el.innerHTML='<div style="font-size:11px;color:var(--text3);padding:6px 4px">No results.</div>';return;}
+  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px">
+    ${res.map(p=>`<div onclick="sjScAdd('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${p.n}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">${SJ_SG_CFG[p.sg].label} · #${p.id}</div>
+      </div>
+      <div style="width:26px;height:26px;border-radius:50%;background:var(--accent-bg);border:1px solid var(--accent);display:grid;place-items:center;flex-shrink:0">
+        <i class="ti ti-plus" style="font-size:12px;color:var(--accent)"></i>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function sjScAdd(id){
+  if(!sjState.sel.includes(id)) sjState.sel.push(id);
+  const inp=document.getElementById('sj-sc-q');
+  if(inp) inp.value='';
+  sjScSearch('');
+  sjRender();
+}
+
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 stk=['home']; rp('home', hHome());
