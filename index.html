@@ -5040,7 +5040,13 @@ function ghsDiamond(num, size) {
 
 // Small inline badge version for product rows (no label)
 function ghsBadge(num) {
-  return `<span title="${SJ_GHS_LABELS[num]||'GHS0'+num}" style="display:inline-block;flex-shrink:0">${ghsDiamond(num,24)}</span>`;
+  const c = SJ_GHS_CFG[num]||{col:'#888',bg:'#eee'};
+  const lbl = (SJ_GHS_LABELS[num]||'GHS0'+num).split('/')[0].trim();
+  const abbr = lbl.length>10 ? lbl.substring(0,9)+'…' : lbl;
+  return `<span title="${SJ_GHS_LABELS[num]||'GHS0'+num}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px 2px 3px;border-radius:5px;background:${c.bg};border:1px solid ${c.col}35;flex-shrink:0;white-space:nowrap">
+    <span style="display:inline-block;width:10px;height:10px;flex-shrink:0">${ghsDiamond(num,10)}</span>
+    <span style="font-size:8.5px;font-weight:700;color:${c.col}">${abbr}</span>
+  </span>`;
 }
 
 const SJ_GHS_CFG = {
@@ -5347,14 +5353,22 @@ function sjBuildDet(p){
 
   ${p.ghs.length>0?`
   <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
-    <div class="stit" style="margin-bottom:12px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${sigCol};flex-shrink:0"></span>GHS Hazard Pictograms</div>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
-      ${p.ghs.map(g=>{const lbl=SJ_GHS_LABELS[g]||'GHS0'+g;return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        ${ghsDiamond(g,52)}
-        <div style="font-size:8px;font-weight:700;color:var(--text2);text-align:center;line-height:1.2;max-width:52px">${lbl}</div>
-      </div>`;}).join('')}
+    <div class="stit" style="margin-bottom:10px;display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${sigCol};flex-shrink:0"></span>GHS Hazard Pictograms</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${p.ghs.map(g=>{
+        const gc=SJ_GHS_CFG[g]||{col:'#888',bg:'#eee'};
+        const lbl=SJ_GHS_LABELS[g]||'GHS0'+g;
+        return `<div style="display:flex;align-items:center;gap:12px;background:${gc.bg};border:1px solid ${gc.col}20;border-radius:10px;padding:10px 12px">
+          <div style="flex-shrink:0">${ghsDiamond(g,60)}</div>
+          <div>
+            <div style="font-size:13px;font-weight:800;color:${gc.col};margin-bottom:2px">${lbl}</div>
+            <div style="font-size:10px;color:${gc.col};opacity:.7;font-family:monospace">GHS0${g}</div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
   </div>`:''}
+
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
