@@ -232,6 +232,7 @@ input,button,select{font-family:Inter,sans-serif;-webkit-appearance:none}
     <button class="sb" id="sn-products" onclick="goSeg('products')"><i class="ti ti-package" aria-hidden="true"></i>Products</button>
     <button class="sb" id="sn-sr" onclick="goSeg('sr')"><i class="ti ti-search" aria-hidden="true"></i>Search</button>
     <button class="sb" id="sn-sj" onclick="goSeg('sj')"><i class="ti ti-book-2" aria-hidden="true"></i>Safety</button>
+    <button class="sb" id="sn-comp" onclick="goSeg('comp')"><i class="ti ti-arrows-exchange-2" aria-hidden="true"></i>Compare</button>
   </div>
 </div>
 <div class="pw" id="pw"></div>
@@ -1777,13 +1778,13 @@ function goBack() {
   if(html) {
     rp(id, html, 'left');
   } else {
-    const fns = {home:hHome,wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch,sj:hSJ};
+    const fns = {home:hHome,wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch,sj:hSJ,comp:hComp};
     rp(id, (fns[id]||hHome)(), 'left');
   }
 }
-function sseg(id) { ['home','wt','cl','fl','wld','gas','ref','kl','rp','nv','nbi','products','ai','sr','sj'].forEach(s=>{const el=document.getElementById('sn-'+s);if(el)el.classList.toggle('on',s===id);}); }
+function sseg(id) { ['home','wt','cl','fl','wld','gas','ref','kl','rp','nv','nbi','products','ai','sr','sj','comp'].forEach(s=>{const el=document.getElementById('sn-'+s);if(el)el.classList.toggle('on',s===id);}); }
 function goHome() { sseg('home'); stk=[{id:'home',html:null}]; rp('home', hHome(), 'left'); }
-function goSeg(s) { sseg(s); const fn={wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch,sj:hSJ}[s]; const html=fn?fn():null; stk=[{id:s,html}]; if(html)rp(s,html); }
+function goSeg(s) { sseg(s); const fn={wt:hWT,cl:hCL,fl:hFuel,wld:hWelding,gas:hGases,nv:hNV,nbi:hNBI,kl:hKluber,rp:hRopes,ref:hRefrig,products:hProducts,ai:hAI,sr:hSrch,sj:hSJ,comp:hComp}[s]; const html=fn?fn():null; stk=[{id:s,html}]; if(html)rp(s,html); }
 function prB(pr) { const l=pr.toLowerCase(); return `<span class="bdg ${l.includes('must')?'b-must':l.includes('good')?'b-gth':'b-opt'}">${pr}</span>`; }
 function bb(b) { return b==='UNITOR'?'b-u':b==='NALFLEET'?'b-n':'b-nd'; }
 
@@ -6023,6 +6024,977 @@ function sjScAdd(id){
   sjRender();
 }
 
+
+
+
+// ── DREW MARINE ↔ WSS CROSS-REFERENCE & SAVINGS CALCULATOR ───────────────────
+
+var compState = {cat:'All', q:'', view:'list'};       // list | basket | detail
+var compBasket = [];   // [{idx, drewVol, drewPrice, wssPrice}]
+var compDetailIdx = null;
+
+const COMP_CATS = ['All','Cooling Water','Boiler Water','Descaling','Sanitation','Sewage','Cleaning','Fuel Treatment','Soot Treatment','Ballast Water','Crew Care'];
+
+// volRatio = WSS volume needed / Drew volume (accounts for concentration difference)
+// e.g. 0.2 = WSS product is 5× more concentrated → need 80% less
+const COMP_PRODUCTS = [
+  // ── COOLING WATER ──────────────────────────────────────────────────────
+  {cat:'Cooling Water',
+   drewProd:'Liquidewt',          drewDose:'8 L / Ton (initial)',
+   wssProd:'Engine Water Treatment 9-108', wssPart:'777703',  wssDose:'2.25 L / Ton (initial)',
+   volRatio:0.282, note:'WSS product requires 3.6× less volume per ton'},
+
+  // ── BOILER WATER ───────────────────────────────────────────────────────
+  {cat:'Boiler Water',
+   drewProd:'Drewplex AT',        drewDose:'Up to 5 L / Ton (initial)',
+   wssProd:'Autotreat',            wssPart:'698720',          wssDose:'2.4 L / Ton (initial)',
+   volRatio:0.48,  note:'More concentrated — 52% less volume needed'},
+  {cat:'Boiler Water',
+   drewProd:'Drewplex OX',        drewDose:'300 mL / Ton (initial)',
+   wssProd:'Oxygen Scavenger Plus',wssPart:'698712',          wssDose:'150 mL / Ton (initial)',
+   volRatio:0.50,  note:'2× more concentrated — 50% less volume'},
+  {cat:'Boiler Water',
+   drewProd:'Liquid Coagulant',   drewDose:'28 mL / Ton',
+   wssProd:'Boiler Coagulant',    wssPart:'571331',           wssDose:'20 mL / Ton',
+   volRatio:0.71,  note:'29% less product needed per ton'},
+
+  // ── DESCALING ──────────────────────────────────────────────────────────
+  {cat:'Descaling',
+   drewProd:'Ameroyal',           drewDose:'30 mL / Ton',
+   wssProd:'Vaptreat',            wssPart:'571364',           wssDose:'15 mL / Ton',
+   volRatio:0.50,  note:'2× more concentrated — 50% less volume'},
+  {cat:'Descaling',
+   drewProd:'Ameroid RSR',        drewDose:'1 L / 5 L water',
+   wssProd:'Metal Brite HD',      wssPart:'571679',           wssDose:'1 L / 9 L water',
+   volRatio:0.60,  note:'WSS dilutes further — 40% less product used'},
+  {cat:'Descaling',
+   drewProd:'Ethylene Glycol (25 L)',drewDose:'40 L / 60 L water',
+   wssProd:'Monoethylene Glycol (MEG)',wssPart:'909018',      wssDose:'40 L / 60 L water',
+   volRatio:1.00,  note:'Same concentration — direct 1:1 replacement'},
+  {cat:'Descaling',
+   drewProd:'SAF-Acid',           drewDose:'1 kg / 9 L water',
+   wssProd:'Descalex',            wssPart:'571646',           wssDose:'0.5 kg / 9.5 L water',
+   volRatio:0.50,  note:'2× more active — 50% less product required'},
+  {cat:'Descaling',
+   drewProd:'Descale-IT',         drewDose:'2 L / 8 L water (20%)',
+   wssProd:'Descaling Liquid',    wssPart:'571653',           wssDose:'1 L / 9 L water (10%)',
+   volRatio:0.50,  note:'WSS product is 2× more concentrated'},
+  {cat:'Descaling',
+   drewProd:'Ameroid DC',         drewDose:'1 L / 8 L water',
+   wssProd:'Disclean',            wssPart:'571687',           wssDose:'1 L / 4 L water',
+   volRatio:1.80,  note:'Wider dilution range — slightly more needed but more versatile'},
+  {cat:'Descaling',
+   drewProd:'OSD/LT',             drewDose:'Neat',
+   wssProd:'Seacare OSD-2',       wssPart:'764420',           wssDose:'Neat',
+   volRatio:1.00,  note:'Direct 1:1 replacement — same dosage'},
+  {cat:'Descaling',
+   drewProd:'Mud Conditioner',    drewDose:'2 L / 98 L water',
+   wssProd:'Mud & Silt Remover',  wssPart:'635326',           wssDose:'100 mL / Ton',
+   volRatio:0.005, note:'WSS product is ~200× more concentrated'},
+
+  // ── SANITATION ─────────────────────────────────────────────────────────
+  {cat:'Sanitation',
+   drewProd:'Envirocare VTC 4000',drewDose:'10 mL / Toilet / day',
+   wssProd:'Gamazyme BTC',        wssPart:'589945',           wssDose:'10 mL / Toilet / day',
+   volRatio:1.00,  note:'Same dosage — direct replacement'},
+  {cat:'Sanitation',
+   drewProd:'Envirocare WTE',     drewDose:'227 g / 50 POB / week',
+   wssProd:'Gamazyme 700 FN',     wssPart:'571711',           wssDose:'100 g / 50 POB / week',
+   volRatio:0.44,  note:'WSS requires 56% less product per week'},
+  {cat:'Sanitation',
+   drewProd:'Envirocare CF3000 Sachets',drewDose:'50 g / Toilet / week',
+   wssProd:'Gamazyme TDS',        wssPart:'743146',           wssDose:'50 g / Toilet / week',
+   volRatio:1.00,  note:'Same dosage — direct replacement'},
+
+  // ── SEWAGE ─────────────────────────────────────────────────────────────
+  {cat:'Sewage',
+   drewProd:'Sodium Hypochlorite 12.5%',drewDose:'15 mL / Ton',
+   wssProd:'Sodium Hypochlorite Potable Grade',wssPart:'909001',wssDose:'15 mL / Ton',
+   volRatio:1.00,  note:'Same concentration and dosage'},
+
+  // ── CLEANING ───────────────────────────────────────────────────────────
+  {cat:'Cleaning',
+   drewProd:'Enviromate 2000',    drewDose:'5 L / 95 L water (5%)',
+   wssProd:'Multi Clean',         wssPart:'777708',           wssDose:'1 L / 99 L water (1%)',
+   volRatio:0.20,  note:'WSS is 5× more concentrated — need 80% less product'},
+  {cat:'Cleaning',
+   drewProd:'ACC/ME',             drewDose:'1 L / 1 L water (50%)',
+   wssProd:'ACC Plus',            wssPart:'698704',           wssDose:'1 L / 9 L water (10%)',
+   volRatio:0.20,  note:'WSS is 5× more concentrated — need 80% less product'},
+  {cat:'Cleaning',
+   drewProd:'Drew Electric 2000', drewDose:'Neat',
+   wssProd:'Electrosolv-E',       wssPart:'604389',           wssDose:'Neat',
+   volRatio:1.00,  note:'Same dosage — direct replacement'},
+  {cat:'Cleaning',
+   drewProd:'SNC 2000',           drewDose:'Neat',
+   wssProd:'Carbonclean LT',      wssPart:'575696',           wssDose:'1 L / 2 L water',
+   volRatio:0.33,  note:'WSS dilutes 1:2 — one container replaces three Drew containers'},
+  {cat:'Cleaning',
+   drewProd:'Drew FC',            drewDose:'Neat',
+   wssProd:'Carbonclean LT',      wssPart:'575696',           wssDose:'1 L / 2 L water',
+   volRatio:0.33,  note:'WSS dilutes 1:2 — 67% less product'},
+  {cat:'Cleaning',
+   drewProd:'Oil & Grease Remover',drewDose:'Neat',
+   wssProd:'Coldwash HD',         wssPart:'571430',           wssDose:'Neat',
+   volRatio:1.00,  note:'Same dosage — direct replacement'},
+  {cat:'Cleaning',
+   drewProd:'Drewclean 3000',     drewDose:'Neat',
+   wssProd:'Cleanbreak',          wssPart:'571497',           wssDose:'Neat',
+   volRatio:1.00,  note:'Direct 1:1 replacement'},
+  {cat:'Cleaning',
+   drewProd:'Edge Heavy Duty Cleaner',drewDose:'2 L / 98 L water (2%)',
+   wssProd:'Alkleen Safety Liquid',wssPart:'571513',          wssDose:'1 L / 99 L water (1%)',
+   volRatio:0.50,  note:'WSS is 2× more concentrated — 50% less product'},
+  {cat:'Cleaning',
+   drewProd:'Envirocare DLC',     drewDose:'120 mL / drain / week',
+   wssProd:'Gamazyme DPC',        wssPart:'666843',           wssDose:'500 mL / drain',
+   volRatio:0.092, note:'Highly concentrated — drastically less product needed'},
+
+  // ── FUEL TREATMENT ─────────────────────────────────────────────────────
+  {cat:'Fuel Treatment',
+   drewProd:'Amergy XLS Plus',    drewDose:'1 L / 5 Ton (200 mL / Ton)',
+   wssProd:'DieselPower Lubricity',wssPart:'779094',          wssDose:'100 mL / Ton',
+   volRatio:0.50,  note:'2× more concentrated — 50% less product per ton'},
+  {cat:'Fuel Treatment',
+   drewProd:'Amergy 2020',        drewDose:'1 L / 25 Ton',
+   wssProd:'DieselPower Conditioner',wssPart:'777190',        wssDose:'1 L / 25 Ton',
+   volRatio:1.00,  note:'Same dosage rate — direct replacement'},
+  {cat:'Fuel Treatment',
+   drewProd:'Amergy 222',         drewDose:'1 L / 15 Ton',
+   wssProd:'DieselPower Conditioner',wssPart:'777190',        wssDose:'1 L / 25 Ton',
+   volRatio:0.60,  note:'WSS treats more tons per litre — 40% less product'},
+
+  // ── SOOT TREATMENT ─────────────────────────────────────────────────────
+  {cat:'Soot Treatment',
+   drewProd:'LT-Soot Release',    drewDose:'Avg 1 kg / day',
+   wssProd:'FuelPower Soot Remover',wssPart:'571240',         wssDose:'Avg 1.5 kg / day',
+   volRatio:1.50,  note:'Slightly higher dosage but more effective boiler protection'},
+  {cat:'Soot Treatment',
+   drewProd:'Soot Sticks',        drewDose:'2.5 kg / day',
+   wssProd:'FuelPower Soot Remover Liquid Plus',wssPart:'778848',wssDose:'Avg 1 kg / day',
+   volRatio:1.00,  note:'Liquid format — same treatment coverage, easier handling'},
+
+  // ── BALLAST WATER ──────────────────────────────────────────────────────
+  {cat:'Ballast Water',
+   drewProd:'Sodium Thiosulfate Liquid (Pentahydrate)',drewDose:'21 mL / ppm Cl',
+   wssProd:'BallastGuard STS 30', wssPart:'779162',           wssDose:'21 mL / ppm Cl',
+   volRatio:1.00,  note:'Equivalent formulation — direct replacement'},
+  {cat:'Ballast Water',
+   drewProd:'Sodium Thiosulfate Powder (Pentahydrate)',drewDose:'7 mg / ppm Cl',
+   wssProd:'BallastGuard STS Solid',wssPart:'779212',         wssDose:'7 mg / ppm Cl',
+   volRatio:1.00,  note:'Equivalent formulation — direct replacement'},
+
+  // ── CREW CARE ──────────────────────────────────────────────────────────
+  {cat:'Crew Care',
+   drewProd:'TNW Laundry Detergent (250 pkts)',drewDose:'33.6 g / 9 kg laundry',
+   wssProd:'EasyClean Laundry Powder',wssPart:'778871',       wssDose:'35 g / 5 kg laundry',
+   volRatio:1.88,  note:'Slightly more per wash but covers smaller loads — more versatile'},
+  {cat:'Crew Care',
+   drewProd:'DM Handcleaner 4.5 L',drewDose:'Neat',
+   wssProd:'EasyClean Liquid Hand Soap D',wssPart:'778858',   wssDose:'Neat',
+   volRatio:1.00,  note:'Direct replacement — same usage rate'},
+  {cat:'Crew Care',
+   drewProd:'Pot & Pan Cleaner (4×3.8 L)',drewDose:'7.8 mL / L water',
+   wssProd:'EasyClean Dishwash Liquid',wssPart:'778864',      wssDose:'1 L / 128 L water',
+   volRatio:1.00,  note:'Same dilution — direct replacement'},
+  {cat:'Crew Care',
+   drewProd:'Tough Job Cleaner (4×1.9 L)',drewDose:'1 L / 32 L water (3%)',
+   wssProd:'EasyClean Floor & Hard Surface',wssPart:'778843', wssDose:'1 L / 200 L water (0.5%)',
+   volRatio:0.16,  note:'WSS is 6× more concentrated — 84% less product'},
+  {cat:'Crew Care',
+   drewProd:'Food Handlers Hand Soap (6×1 L)',drewDose:'Neat',
+   wssProd:'EasyClean Liquid Hand Soap D',wssPart:'778858',   wssDose:'Neat',
+   volRatio:1.00,  note:'Direct replacement'},
+  {cat:'Crew Care',
+   drewProd:'Oven & Grill Cleaner (6×0.95 L)',drewDose:'Neat',
+   wssProd:'EasyClean Oven & Grill',wssPart:'778860',         wssDose:'Neat',
+   volRatio:1.00,  note:'Direct replacement'},
+  {cat:'Crew Care',
+   drewProd:'Dishwasher Detergent (2×9.5 L)',drewDose:'0.7 mL / L water',
+   wssProd:'EasyClean Dishwash Liquid',wssPart:'778864',      wssDose:'0.7 mL / L water',
+   volRatio:1.00,  note:'Identical dilution — direct replacement'},
+  {cat:'Crew Care',
+   drewProd:'Neutral Cleaner Disinfectant (4×1.9 L)',drewDose:'1 L / 255 L water (0.4%)',
+   wssProd:'EasyClean Cleaning & Disinfection',wssPart:'778845',wssDose:'1 L / 100 L water (1%)',
+   volRatio:2.55,  note:'Drew product is more diluted — WSS gives stronger disinfection per litre'},
+  {cat:'Crew Care',
+   drewProd:'Surface Sanitizer (6×0.95 L)',drewDose:'Neat',
+   wssProd:'EasyClean Cleaning & Disinfection',wssPart:'778845',wssDose:'1 L / 100 L water',
+   volRatio:0.01,  note:'WSS product highly concentrated — 99% less product needed'},
+  {cat:'Crew Care',
+   drewProd:'Surface & Glass Cleaner (4×1.9 L)',drewDose:'1 L / 32 L water (3%)',
+   wssProd:'EasyClean Window & Mirror',wssPart:'778847',      wssDose:'1 L / 200 L water (0.5%)',
+   volRatio:0.16,  note:'WSS is 6× more concentrated — 84% less product'},
+];
+
+// ── STATE HELPERS ──────────────────────────────────────────────────────────────
+function compBasketFind(idx){ return compBasket.find(b=>b.idx===idx); }
+function compBasketAdd(idx){
+  if(!compBasketFind(idx)) compBasket.push({idx,drewVol:'',drewPrice:'',wssPrice:''});
+}
+function compBasketRemove(idx){
+  compBasket=compBasket.filter(b=>b.idx!==idx);
+}
+
+// ── MAIN SCREEN ────────────────────────────────────────────────────────────────
+function hComp(){
+  if(compState.view==='basket') return hCompCalc();
+  if(compState.view==='detail' && compDetailIdx!==null) return hCompDetail(compDetailIdx);
+  return hCompList();
+}
+
+function hCompList(){
+  const q=(compState.q||'').toLowerCase();
+  const cat=compState.cat||'All';
+  let prods=COMP_PRODUCTS;
+  if(cat!=='All') prods=prods.filter(p=>p.cat===cat);
+  if(q) prods=prods.filter(p=>
+    p.drewProd.toLowerCase().includes(q)||
+    p.wssProd.toLowerCase().includes(q)||
+    p.cat.toLowerCase().includes(q));
+
+  return `<div id="comp-root" style="background:var(--bg);min-height:100%;display:flex;flex-direction:column">
+  <!-- Header -->
+  <div style="background:linear-gradient(150deg,#1A1A2E,#003057);padding:18px 14px 14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.12);display:grid;place-items:center;flex-shrink:0">
+        <i class="ti ti-arrows-exchange-2" style="font-size:22px;color:#FFD700"></i>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.4);text-transform:uppercase">Competitor Cross-Reference</div>
+        <div style="font-size:19px;font-weight:800;color:#fff">Drew Marine → WSS</div>
+      </div>
+      <!-- Basket button -->
+      <button onclick="compState.view='basket';push('comp-basket',hCompCalc)" style="position:relative;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.12);border:none;cursor:pointer;display:grid;place-items:center">
+        <i class="ti ti-calculator" style="font-size:18px;color:#FFD700"></i>
+        ${compBasket.length>0?`<span style="position:absolute;top:-4px;right:-4px;background:#C41E3A;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center">${compBasket.length}</span>`:''}
+      </button>
+    </div>
+    <!-- Search bar -->
+    <div style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px">
+      <i class="ti ti-search" style="font-size:15px;color:rgba(255,255,255,.5);flex-shrink:0"></i>
+      <input type="text" placeholder="Search Drew or WSS product name…" value="${compState.q||''}" oninput="compState.q=this.value;compListRender()" style="flex:1;border:none;outline:none;background:transparent;font-size:13px;color:#fff;font-family:Inter,sans-serif;::placeholder-color:rgba(255,255,255,.4)"/>
+      ${compState.q?`<button onclick="compState.q='';compListRender()" style="border:none;background:none;cursor:pointer;padding:0"><i class="ti ti-x" style="font-size:13px;color:rgba(255,255,255,.5)"></i></button>`:''}
+    </div>
+  </div>
+
+  <!-- Category chips -->
+  <div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 12px;flex-shrink:0">
+    <div style="display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px">
+      ${COMP_CATS.map(c=>`<button onclick="compState.cat='${c}';compListRender()" style="flex-shrink:0;padding:5px 11px;border-radius:20px;border:1px solid ${compState.cat===c?'var(--accent)':'var(--border)'};background:${compState.cat===c?'var(--accent)':'var(--card)'};color:${compState.cat===c?'#fff':'var(--text2)'};font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">${c}</button>`).join('')}
+    </div>
+  </div>
+
+  <!-- Scrollable list -->
+  <div id="comp-list-body" style="padding:10px 12px;flex:1;padding-bottom:${compBasket.length>0?'90px':'10px'}">
+    ${compListCards(prods)}
+  </div>
+
+  <!-- Sticky calculator bar — always visible when products added -->
+  ${compBasket.length>0?`
+  <div id="comp-sticky" style="position:sticky;bottom:0;padding:10px 12px 12px;background:linear-gradient(to top,var(--bg) 75%,transparent);flex-shrink:0;z-index:10">
+    <button onclick="compState.view='basket';push('comp-basket',hCompCalc)" style="width:100%;padding:14px 18px;background:linear-gradient(135deg,#003057,#005DAA);border:none;border-radius:13px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,48,87,.4);-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.15);display:grid;place-items:center;flex-shrink:0">
+          <i class="ti ti-calculator" style="font-size:17px;color:#FFD700"></i>
+        </div>
+        <div style="text-align:left">
+          <div style="font-size:13px;font-weight:800">Open Savings Calculator</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.65)">Enter your volumes to see how much you save</div>
+        </div>
+      </div>
+      <div style="background:#FFD700;color:#003057;font-size:12px;font-weight:900;padding:5px 11px;border-radius:20px;flex-shrink:0">${compBasket.length}</div>
+    </button>
+  </div>`:''}
+</div>`;
+}
+
+function compListRender(){
+  const el=document.getElementById('comp-list-body');
+  if(!el)return;
+  const q=(compState.q||'').toLowerCase();
+  const cat=compState.cat||'All';
+  let prods=COMP_PRODUCTS;
+  if(cat!=='All') prods=prods.filter(p=>p.cat===cat);
+  if(q) prods=prods.filter(p=>p.drewProd.toLowerCase().includes(q)||p.wssProd.toLowerCase().includes(q)||p.cat.toLowerCase().includes(q));
+  el.innerHTML=compListCards(prods);
+  el.style.paddingBottom=compBasket.length>0?'90px':'10px';
+  // Update sticky bar
+  const sticky=document.getElementById('comp-sticky');
+  if(sticky){
+    if(compBasket.length===0){sticky.remove();}
+    else{const cnt=sticky.querySelector('[style*="FFD700"]');if(cnt)cnt.textContent=compBasket.length;}
+  } else if(compBasket.length>0){
+    // Create sticky bar if it doesn't exist
+    const bar=document.createElement('div');
+    bar.id='comp-sticky';
+    bar.style.cssText='position:sticky;bottom:0;padding:10px 12px 12px;background:linear-gradient(to top,var(--bg) 75%,transparent);flex-shrink:0;z-index:10';
+    bar.innerHTML=`<button onclick="compState.view='basket';push('comp-basket',hCompCalc)" style="width:100%;padding:14px 18px;background:linear-gradient(135deg,#003057,#005DAA);border:none;border-radius:13px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,48,87,.4);-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.15);display:grid;place-items:center;flex-shrink:0"><i class="ti ti-calculator" style="font-size:17px;color:#FFD700"></i></div>
+        <div style="text-align:left"><div style="font-size:13px;font-weight:800">Open Savings Calculator</div><div style="font-size:10px;color:rgba(255,255,255,.65)">Enter your volumes to see how much you save</div></div>
+      </div>
+      <div style="background:#FFD700;color:#003057;font-size:12px;font-weight:900;padding:5px 11px;border-radius:20px;flex-shrink:0">${compBasket.length}</div>
+    </button>`;
+    el.parentElement.appendChild(bar);
+  }
+}
+
+function compListCards(prods){
+  if(!prods.length) return `<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:12px">No products match your search.</div>`;
+  return `<div style="font-size:10px;color:var(--text3);margin-bottom:8px">${prods.length} product${prods.length!==1?'s':''} found</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    ${prods.map(p=>{
+      const idx=COMP_PRODUCTS.indexOf(p);
+      const inBasket=!!compBasketFind(idx);
+      const pct=Math.round((1-p.volRatio)*100);
+      const isSaving=pct>2,isMore=pct<-2;
+      const badgeCol=isSaving?'#155D32':isMore?'#B45000':'#666';
+      const badgeBg=isSaving?'#E8F5E9':isMore?'#FBE8D5':'#f0f0f0';
+      const badgeTxt=isSaving?`↓ ${pct}% less volume`:isMore?`↑ ${Math.abs(pct)}% more volume`:'Same volume';
+      return `<div onclick="compDetailIdx=${idx};compState.view='detail';push('comp-det-${idx}',()=>hCompDetail(${idx}))" style="background:var(--card);border:1px solid var(--border);border-radius:13px;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px 0;gap:8px">
+          <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:#C41E3A15;color:#C41E3A;text-transform:uppercase;letter-spacing:.05em">${p.cat}</span>
+          <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${badgeBg};color:${badgeCol}">${badgeTxt}</span>
+        </div>
+        <div style="padding:9px 12px 3px;display:flex;align-items:flex-start;gap:8px">
+          <div style="width:8px;height:8px;border-radius:50%;background:#C41E3A;flex-shrink:0;margin-top:4px"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:700;color:var(--text)">${p.drewProd}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:1px">${p.drewDose}</div>
+          </div>
+        </div>
+        <div style="padding:3px 12px 3px 28px">
+          <i class="ti ti-arrow-down" style="font-size:12px;color:var(--text3)"></i>
+        </div>
+        <div style="padding:3px 12px 9px;display:flex;align-items:flex-start;gap:8px">
+          <div style="width:8px;height:8px;border-radius:50%;background:#005DAA;flex-shrink:0;margin-top:4px"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:700;color:var(--accent)">${p.wssProd}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:1px">${p.wssDose}</div>
+          </div>
+          <button onclick="event.stopPropagation();${inBasket?`compBasketRemove(${idx})`:`compBasketAdd(${idx})`};compListRender()" style="flex-shrink:0;padding:6px 10px;border-radius:8px;border:1px solid ${inBasket?'#C41E3A':'var(--accent)'};background:${inBasket?'#FDEAED':'var(--accent-bg)'};font-size:10px;font-weight:700;color:${inBasket?'#C41E3A':'var(--accent)'};cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap">
+            <i class="ti ${inBasket?'ti-x':'ti-calculator'}" style="font-size:11px"></i>${inBasket?'Remove':'Add'}
+          </button>
+        </div>
+        <div style="padding:0 12px 9px;margin-left:16px">
+          <div style="font-size:9.5px;color:${badgeCol};font-style:italic">${p.note}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── PRODUCT DETAIL ─────────────────────────────────────────────────────────────
+function hCompDetail(idx){
+  const p=COMP_PRODUCTS[idx];if(!p)return hCompList();
+  const inBasket=!!compBasketFind(idx);
+  const pct=Math.round((1-p.volRatio)*100);
+  const isSaving=pct>2,isMore=pct<-2;
+  const ratio=p.volRatio;
+
+  return `<div style="background:var(--bg);min-height:100%">
+  <div style="background:linear-gradient(150deg,#1A1A2E,#003057);padding:16px 14px 18px">
+    <button onclick="compState.view='list';goSeg('comp')" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:rgba(255,255,255,.8);background:none;border:none;cursor:pointer;padding:0;margin-bottom:12px">
+      <i class="ti ti-arrow-left" style="font-size:13px"></i>Back to list
+    </button>
+    <span style="font-size:9px;font-weight:700;padding:2px 9px;border-radius:4px;background:rgba(255,255,255,.15);color:#FFD700;text-transform:uppercase;letter-spacing:.05em">${p.cat}</span>
+    <div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:8px">Drew Marine Product</div>
+    <div style="font-size:18px;font-weight:800;color:#fff;line-height:1.2">${p.drewProd}</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px">${p.drewDose}</div>
+  </div>
+
+  <div style="padding:12px 14px">
+    <!-- WSS equivalent card -->
+    <div style="background:var(--accent-bg);border:2px solid var(--accent);border-radius:14px;padding:14px;margin-bottom:10px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:6px">WSS Equivalent</div>
+      <div style="font-size:17px;font-weight:800;color:var(--accent);margin-bottom:4px">${p.wssProd}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text2)">${p.wssDose}</span>
+        ${p.wssPart?`<span style="font-family:monospace;font-size:9px;color:var(--text3);background:var(--bg4);padding:2px 6px;border-radius:3px">#${p.wssPart}</span>`:''}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button onclick="compOpenSJ('${p.wssPart}')" style="flex:1;padding:8px;background:var(--accent);border:none;border-radius:8px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+          <i class="ti ti-book-2" style="font-size:13px"></i>View SDS / Safety
+        </button>
+      </div>
+    </div>
+
+    <!-- Concentration comparison -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+      <div class="stit" style="margin-bottom:10px">Concentration Comparison</div>
+      <div style="background:#C41E3A08;border:1px solid #C41E3A20;border-radius:10px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:9px;font-weight:700;color:#C41E3A;text-transform:uppercase;margin-bottom:4px">Drew Marine</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${p.drewDose}</div>
+      </div>
+      <div style="text-align:center;padding:4px">
+        <div style="display:inline-flex;align-items:center;gap:6px;background:${isSaving?'#E8F5E9':isMore?'#FBE8D5':'#f0f0f0'};padding:5px 12px;border-radius:20px">
+          <i class="ti ${isSaving?'ti-trending-down':isMore?'ti-trending-up':'ti-equal'}" style="font-size:13px;color:${isSaving?'#155D32':isMore?'#B45000':'#666'}"></i>
+          <span style="font-size:11px;font-weight:700;color:${isSaving?'#155D32':isMore?'#B45000':'#666'}">${isSaving?`WSS needs ${pct}% less volume`:isMore?`WSS needs ${Math.abs(pct)}% more volume`:'Same volume needed'}</span>
+        </div>
+      </div>
+      <div style="background:#003057 08;border:1px solid #003057 20;border-radius:10px;padding:10px 12px;margin-top:8px">
+        <div style="font-size:9px;font-weight:700;color:#005DAA;text-transform:uppercase;margin-bottom:4px">WSS</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${p.wssDose}</div>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:8px">
+        <div style="font-size:10px;color:var(--text2);font-style:italic">${p.note}</div>
+      </div>
+    </div>
+
+    <!-- Volume ratio visual -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+      <div class="stit" style="margin-bottom:10px">Volume Ratio</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">For every <strong>1,000 L</strong> of Drew product used:</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="flex-shrink:0;width:70px;font-size:10px;font-weight:700;color:#C41E3A;text-align:right">Drew</div>
+        <div style="flex:1;height:20px;background:#C41E3A;border-radius:4px"></div>
+        <div style="flex-shrink:0;width:50px;font-size:11px;font-weight:800;color:#C41E3A">1,000 L</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex-shrink:0;width:70px;font-size:10px;font-weight:700;color:#005DAA;text-align:right">WSS</div>
+        <div style="flex:1;height:20px;background:#005DAA;border-radius:4px;width:${Math.min(100,Math.round(ratio*100))}%;max-width:${Math.min(100,Math.round(ratio*100))}%"></div>
+        <div style="flex-shrink:0;width:50px;font-size:11px;font-weight:800;color:#005DAA">${Math.round(ratio*1000)} L</div>
+      </div>
+      ${isSaving?`<div style="margin-top:10px;padding:9px 12px;background:#E8F5E9;border-radius:8px;text-align:center">
+        <span style="font-size:12px;font-weight:800;color:#155D32">Save ${Math.round((1-ratio)*1000)} L for every 1,000 L currently used</span>
+      </div>`:''}
+    </div>
+
+    <!-- Add to calculator -->
+    <button onclick="${inBasket?`compBasketRemove(${idx});compState.view='list';goSeg('comp')`:`compBasketAdd(${idx});compState.view='basket';push('comp-basket',hCompCalc)`}" style="width:100%;padding:13px;background:${inBasket?'#FDEAED':'linear-gradient(135deg,#003057,#005DAA)'};border:${inBasket?'1px solid #C41E3A':'none'};border-radius:12px;color:${inBasket?'#C41E3A':'#fff'};font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <i class="ti ${inBasket?'ti-x':'ti-calculator'}" style="font-size:15px"></i>
+      ${inBasket?'Remove from Calculator':'Add to Savings Calculator'}
+    </button>
+  </div>
+</div>`;
+}
+
+// ── SAVINGS CALCULATOR ─────────────────────────────────────────────────────────
+function hCompCalc(){
+  const items=compBasket.map(b=>({...b,prod:COMP_PRODUCTS[b.idx]})).filter(b=>b.prod);
+  const hasVols=items.some(b=>parseFloat(b.drewVol)>0);
+  const totalDrawVol=items.reduce((s,b)=>s+(parseFloat(b.drewVol)||0),0);
+  const totalWssVol=items.reduce((s,b)=>s+(parseFloat(b.drewVol)||0)*b.prod.volRatio,0);
+  const totalSavedVol=totalDrawVol-totalWssVol;
+  const pctSaved=totalDrawVol>0?Math.round((totalSavedVol/totalDrawVol)*100):0;
+  const pailSaved=Math.round(totalSavedVol/20); // 20L per pail average
+  const co2Saved=(pailSaved*3.6387/1000).toFixed(2);
+  const totalDrawCost=items.reduce((s,b)=>{const p=parseFloat(b.drewPrice)||0;return s+p*(parseFloat(b.drewVol)||0);},0);
+  const totalWssCost=items.reduce((s,b)=>{const p=parseFloat(b.wssPrice)||0;return s+p*(parseFloat(b.drewVol)||0)*b.prod.volRatio;},0);
+  const costSaved=totalDrawCost-totalWssCost;
+
+  return `<div style="background:var(--bg);min-height:100%">
+  <div style="background:linear-gradient(150deg,#1A1A2E,#003057);padding:16px 14px 14px">
+    <button onclick="compState.view='list';goSeg('comp')" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:rgba(255,255,255,.8);background:none;border:none;cursor:pointer;padding:0;margin-bottom:12px">
+      <i class="ti ti-arrow-left" style="font-size:13px"></i>Back to products
+    </button>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#fff">Savings Calculator</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.5)">${items.length} product${items.length!==1?'s':''} · Enter your Drew volumes below</div>
+      </div>
+      ${hasVols?`<button onclick="compPrintReport()" style="display:flex;align-items:center;gap:6px;padding:9px 14px;background:#FFD700;border:none;border-radius:10px;font-size:11px;font-weight:800;color:#003057;cursor:pointer;flex-shrink:0;box-shadow:0 3px 10px rgba(255,215,0,.4)">
+        <i class="ti ti-chart-bar" style="font-size:14px"></i>Generate Report
+      </button>`:''}
+    </div>
+  </div>
+
+  <div style="padding:12px 14px">
+    ${items.length===0?`
+    <div style="text-align:center;padding:40px 20px">
+      <i class="ti ti-calculator" style="font-size:36px;color:var(--text3);margin-bottom:10px"></i>
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:5px">No products added yet</div>
+      <div style="font-size:11px;color:var(--text3)">Go back to the product list and tap "Add" on Drew products you use.</div>
+    </div>`:`
+
+    <!-- Savings summary (shown when volumes entered) -->
+    <!-- Summary always rendered, shown/hidden via JS -->
+    <div id="calc-summary" style="background:linear-gradient(135deg,#003057,#005DAA);border-radius:14px;padding:14px;margin-bottom:12px;display:${hasVols?'block':'none'}">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:10px">Your Annual Savings</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px">
+          <i class="ti ti-trending-down" style="font-size:14px;color:#81C784;margin-bottom:4px;display:block"></i>
+          <div id="sum-vol" style="font-size:16px;font-weight:900;color:#81C784;line-height:1">${Math.round(totalSavedVol).toLocaleString()} L</div>
+          <div style="font-size:8.5px;color:rgba(255,255,255,.5);margin-top:3px">Volume Saved<br><span id="sum-pct">${pctSaved}% reduction</span></div>
+        </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px">
+          <i class="ti ti-package" style="font-size:14px;color:#CE93D8;margin-bottom:4px;display:block"></i>
+          <div id="sum-pail" style="font-size:16px;font-weight:900;color:#CE93D8;line-height:1">${pailSaved.toLocaleString()}</div>
+          <div style="font-size:8.5px;color:rgba(255,255,255,.5);margin-top:3px">Fewer Pails<br>less plastic on board</div>
+        </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px">
+          <i class="ti ti-leaf" style="font-size:14px;color:#80CBC4;margin-bottom:4px;display:block"></i>
+          <div id="sum-co2" style="font-size:16px;font-weight:900;color:#80CBC4;line-height:1">${co2Saved} t</div>
+          <div style="font-size:8.5px;color:rgba(255,255,255,.5);margin-top:3px">CO₂ Saved<br>CO₂ eq. from pails</div>
+        </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px">
+          <i class="ti ti-coin" style="font-size:14px;color:#FFD54F;margin-bottom:4px;display:block"></i>
+          <div id="sum-cost" style="font-size:16px;font-weight:900;color:#FFD54F;line-height:1">${totalDrawCost>0?'$'+Math.round(costSaved).toLocaleString():'Add prices'}</div>
+          <div style="font-size:8.5px;color:rgba(255,255,255,.5);margin-top:3px">Cost Saving<br><span id="sum-cost-sub">${totalDrawCost>0?Math.round((costSaved/totalDrawCost)*100)+'% saving':'to calculate'}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product rows with volume inputs -->
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Enter your annual volumes (litres)</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${items.map(b=>{
+        const p=b.prod;
+        const drewV=parseFloat(b.drewVol)||0;
+        const wssV=Math.round(drewV*p.volRatio);
+        const pct=Math.round((1-p.volRatio)*100);
+        const isSav=pct>2,isMor=pct<-2;
+        return `<div style="background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:9px;font-weight:700;color:#C41E3A;margin-bottom:2px">${p.cat}</div>
+              <div style="font-size:12px;font-weight:700;color:var(--text)">${p.drewProd}</div>
+              <div style="font-size:10.5px;color:var(--accent);font-weight:600;margin-top:1px">→ ${p.wssProd}</div>
+            </div>
+            <button onclick="compBasketRemove(${b.idx});compCalcRender()" style="flex-shrink:0;margin-left:8px;width:26px;height:26px;border-radius:50%;background:var(--bg4);border:none;cursor:pointer;display:grid;place-items:center">
+              <i class="ti ti-x" style="font-size:12px;color:var(--text3)"></i>
+            </button>
+          </div>
+          <!-- Volume input row -->
+          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:8px">
+            <div>
+              <div style="font-size:9px;font-weight:700;color:#C41E3A;margin-bottom:3px">Drew Volume (L/yr)</div>
+              <input type="number" min="0" placeholder="e.g. 5000" value="${b.drewVol}" oninput="compUpdateVol(${b.idx},this.value)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:700;color:var(--text);background:var(--bg3);font-family:Inter,sans-serif;-moz-appearance:textfield"/>
+            </div>
+            <div style="text-align:center">
+              <div style="background:${isSav?'#E8F5E9':isMor?'#FBE8D5':'#f5f5f5'};border-radius:6px;padding:4px 6px">
+                <span style="font-size:10px;font-weight:800;color:${isSav?'#155D32':isMor?'#B45000':'#666'}">×${p.volRatio.toFixed(2)}</span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:9px;font-weight:700;color:#005DAA;margin-bottom:3px">WSS Volume (L/yr)</div>
+              <div id="wss-${b.idx}" style="padding:8px 10px;border:1px solid ${isSav?'#A5D6A7':'var(--border)'};border-radius:8px;background:${isSav?'#E8F5E9':'var(--bg3)'};font-size:13px;font-weight:700;color:${isSav?'#155D32':'var(--text2)'}">
+                ${drewV>0?wssV.toLocaleString():'—'}
+              </div>
+            </div>
+          </div>
+          <!-- Price inputs — always visible, clearly labelled -->
+          <div style="margin-top:10px;background:linear-gradient(135deg,#FFF8E1,#FFF3E0);border:1.5px solid #FFD700;border-radius:10px;padding:10px 12px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+              <i class="ti ti-coin" style="font-size:14px;color:#B8860B"></i>
+              <span style="font-size:10px;font-weight:700;color:#7A5200">Add prices to calculate cost savings</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#C41E3A;margin-bottom:4px">Drew Price ($/L)</div>
+                <div style="position:relative">
+                  <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;color:#C41E3A;font-weight:700">$</span>
+                  <input type="number" min="0" step="0.01" placeholder="0.00" value="${b.drewPrice}" oninput="compUpdatePrice(${b.idx},'drewPrice',this.value)" style="width:100%;padding:8px 10px 8px 22px;border:1.5px solid #C41E3A40;border-radius:8px;font-size:13px;font-weight:700;color:#C41E3A;background:white;font-family:Inter,sans-serif;box-sizing:border-box"/>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:9px;font-weight:700;color:#005DAA;margin-bottom:4px">WSS Price ($/L)</div>
+                <div style="position:relative">
+                  <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;color:#005DAA;font-weight:700">$</span>
+                  <input type="number" min="0" step="0.01" placeholder="0.00" value="${b.wssPrice}" oninput="compUpdatePrice(${b.idx},'wssPrice',this.value)" style="width:100%;padding:8px 10px 8px 22px;border:1.5px solid #005DAA40;border-radius:8px;font-size:13px;font-weight:700;color:#005DAA;background:white;font-family:Inter,sans-serif;box-sizing:border-box"/>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="row-saving-${b.idx}" style="display:flex;justify-content:space-between;padding:8px 0 0;border-top:1px solid var(--border);margin-top:8px;${drewV>0?'':'display:none'}">
+            <span style="font-size:10px;color:var(--text3)">Volume saving:</span>
+            <span id="row-saving-val-${b.idx}" style="font-size:10px;font-weight:700;color:${isSav?'#155D32':isMor?'#B45000':'#666'}">${drewV>0?(isSav?'↓ '+Math.round(drewV*(1-p.volRatio)).toLocaleString()+' L saved':isMor?'↑ '+Math.round(drewV*(p.volRatio-1)).toLocaleString()+' L more':'No change'):''}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    `}
+  </div>
+</div>`;
+}
+
+// Targeted update — NO full re-render, no scroll jump, no focus loss
+function compUpdateVol(idx, val){
+  const item=compBasket.find(b=>b.idx===idx);
+  if(!item)return;
+  item.drewVol=val;
+  const p=COMP_PRODUCTS[idx];
+  const drewV=parseFloat(val)||0;
+  const wssV=Math.round(drewV*p.volRatio);
+  const isSav=p.volRatio<0.98,isMor=p.volRatio>1.02;
+  // Update WSS volume display
+  const wssEl=document.getElementById('wss-'+idx);
+  if(wssEl){
+    wssEl.textContent=drewV>0?wssV.toLocaleString():'—';
+    wssEl.style.color=isSav?'#155D32':isMor?'#B45000':'var(--text2)';
+    wssEl.parentElement.style.borderColor=isSav?'#A5D6A7':'var(--border)';
+    wssEl.parentElement.style.background=isSav?'#E8F5E9':'var(--bg3)';
+  }
+  // Update row saving line
+  const rowEl=document.getElementById('row-saving-'+idx);
+  const rowVal=document.getElementById('row-saving-val-'+idx);
+  if(rowEl){
+    rowEl.style.display=drewV>0?'flex':'none';
+    if(rowVal&&drewV>0){
+      const saved=Math.round(drewV*(1-p.volRatio));
+      rowVal.textContent=isSav?'↓ '+saved.toLocaleString()+' L saved':isMor?'↑ '+Math.round(drewV*(p.volRatio-1)).toLocaleString()+' L more':'No change';
+      rowVal.style.color=isSav?'#155D32':isMor?'#B45000':'#666';
+    }
+  }
+  compRefreshSummary();
+}
+
+function compUpdatePrice(idx, field, val){
+  const item=compBasket.find(b=>b.idx===idx);
+  if(item){ item[field]=val; compRefreshSummary(); }
+}
+
+function compRefreshSummary(){
+  const items=compBasket.map(b=>({...b,prod:COMP_PRODUCTS[b.idx]})).filter(b=>b.prod);
+  const totalDrawVol=items.reduce((s,b)=>s+(parseFloat(b.drewVol)||0),0);
+  const totalWssVol=items.reduce((s,b)=>s+(parseFloat(b.drewVol)||0)*b.prod.volRatio,0);
+  const totalSavedVol=totalDrawVol-totalWssVol;
+  const pctSaved=totalDrawVol>0?Math.round((totalSavedVol/totalDrawVol)*100):0;
+  const pailSaved=Math.round(totalSavedVol/20);
+  const co2Saved=(pailSaved*3.6387/1000).toFixed(2);
+  const totalDrawCost=items.reduce((s,b)=>{const p=parseFloat(b.drewPrice)||0;return s+p*(parseFloat(b.drewVol)||0);},0);
+  const totalWssCost=items.reduce((s,b)=>{const p2=parseFloat(b.wssPrice)||0;return s+p2*(parseFloat(b.drewVol)||0)*b.prod.volRatio;},0);
+  const costSaved=totalDrawCost-totalWssCost;
+  const hasVols=totalDrawVol>0;
+  // Show/hide summary block
+  const sumBlock=document.getElementById('calc-summary');
+  if(sumBlock) sumBlock.style.display=hasVols?'block':'none';
+  // Update individual numbers
+  const se=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  se('sum-vol', Math.round(totalSavedVol).toLocaleString()+' L');
+  se('sum-pct', pctSaved+'% reduction');
+  se('sum-pail', pailSaved.toLocaleString());
+  se('sum-co2', co2Saved+' t');
+  se('sum-cost', totalDrawCost>0?'$'+Math.round(costSaved).toLocaleString():'Add prices');
+  se('sum-cost-sub', totalDrawCost>0?Math.round((costSaved/totalDrawCost)*100)+'% saving':'to calculate');
+}
+
+function compCalcRender(){
+  const html=hCompCalc();
+  rp('comp-basket',html);
+}
+
+function compOpenSJ(part){
+  if(!part)return;
+  const prod=SJ_PRODUCTS.find(p=>p.id===part);
+  if(!prod){alert('Safety data for #'+part+' not found.');return;}
+  sjDet(part);
+}
+
+
+// ── SAVINGS REPORT GENERATOR ──────────────────────────────────────────────────
+
+function compPrintReport(){
+  const items=compBasket.map(b=>({...b,prod:COMP_PRODUCTS[b.idx]}))
+    .filter(b=>b.prod&&parseFloat(b.drewVol)>0);
+  if(!items.length){alert('Please add products and enter at least one Drew volume first.');return;}
+
+  // ── CALCULATIONS ──
+  const totalDrew=items.reduce((s,b)=>s+parseFloat(b.drewVol),0);
+  const totalWss=items.reduce((s,b)=>s+parseFloat(b.drewVol)*b.prod.volRatio,0);
+  const volSaved=totalDrew-totalWss, volPct=Math.round((volSaved/totalDrew)*100);
+  const pailSaved=Math.round(volSaved/20);
+  const co2Saved=(pailSaved*3.6387/1000).toFixed(2);
+  const totalDCost=items.reduce((s,b)=>s+(parseFloat(b.drewPrice)||0)*parseFloat(b.drewVol),0);
+  const totalWCost=items.reduce((s,b)=>s+(parseFloat(b.wssPrice)||0)*parseFloat(b.drewVol)*b.prod.volRatio,0);
+  const costSaved=totalDCost-totalWCost, costPct=totalDCost>0?Math.round((costSaved/totalDCost)*100):0;
+  const hasCost=totalDCost>0;
+
+  // Category breakdown
+  const cats={};
+  items.forEach(b=>{
+    const c=b.prod.cat;
+    if(!cats[c])cats[c]={d:0,w:0,dc:0,wc:0};
+    cats[c].d+=parseFloat(b.drewVol);
+    cats[c].w+=parseFloat(b.drewVol)*b.prod.volRatio;
+    cats[c].dc+=(parseFloat(b.drewPrice)||0)*parseFloat(b.drewVol);
+    cats[c].wc+=(parseFloat(b.wssPrice)||0)*parseFloat(b.drewVol)*b.prod.volRatio;
+  });
+  const sortedCats=Object.entries(cats).sort((a,b)=>(b[1].d-b[1].w)-(a[1].d-a[1].w));
+  const sortedItems=[...items].sort((a,b)=>{
+    const savA=parseFloat(a.drewVol)*(1-a.prod.volRatio);
+    const savB=parseFloat(b.drewVol)*(1-b.prod.volRatio);
+    return savB-savA;
+  });
+
+  // ── SVG PRODUCT BAR CHART ──
+  const maxD=Math.max(...items.map(b=>parseFloat(b.drewVol)));
+  const BAR_W=340, NW=170, RH=46, PAD=10;
+  const bH=sortedItems.length*RH+40;
+  let barSvg=`<svg width="${NW+BAR_W+110}" height="${bH}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+  <text x="0" y="16" font-size="11" font-weight="700" fill="#888" font-family="Arial" letter-spacing="1">PRODUCT</text>
+  <text x="${NW}" y="16" font-size="11" font-weight="700" fill="#888" font-family="Arial" letter-spacing="1">VOLUME (L / year)</text>`;
+  sortedItems.forEach((b,i)=>{
+    const y=i*RH+30;
+    const dW=Math.max(2,(parseFloat(b.drewVol)/maxD)*BAR_W);
+    const wW=Math.max(2,(parseFloat(b.drewVol)*b.prod.volRatio/maxD)*BAR_W);
+    const pct=Math.round((1-b.prod.volRatio)*100);
+    const isSav=pct>0;
+    const rowBg=i%2===0?'#F8F9FB':'white';
+    barSvg+=`<rect x="0" y="${y-4}" width="${NW+BAR_W+100}" height="${RH-2}" fill="${rowBg}" rx="3"/>`;
+    // Product name
+    const name=b.prod.drewProd.length>24?b.prod.drewProd.substring(0,23)+'…':b.prod.drewProd;
+    barSvg+=`<text x="${NW-8}" y="${y+11}" text-anchor="end" font-size="11" fill="#333" font-family="Arial">${name}</text>`;
+    barSvg+=`<text x="${NW-8}" y="${y+24}" text-anchor="end" font-size="9" fill="#888" font-family="Arial,sans-serif">→ ${b.prod.wssProd.length>24?b.prod.wssProd.substring(0,23)+'…':b.prod.wssProd}</text>`;
+    // Drew bar
+    barSvg+=`<rect x="${NW}" y="${y}" width="${dW}" height="15" fill="#C41E3A" rx="2"/>`;
+    barSvg+=`<text x="${NW+dW+5}" y="${y+12}" font-size="10" fill="#C41E3A" font-family="Arial" font-weight="600">${Math.round(parseFloat(b.drewVol)).toLocaleString()}</text>`;
+    // WSS bar
+    barSvg+=`<rect x="${NW}" y="${y+18}" width="${wW}" height="15" fill="#005DAA" rx="2"/>`;
+    barSvg+=`<text x="${NW+wW+5}" y="${y+30}" font-size="10" fill="#005DAA" font-family="Arial" font-weight="600">${Math.round(parseFloat(b.drewVol)*b.prod.volRatio).toLocaleString()}</text>`;
+    // Savings badge
+    if(isSav){
+      const bx=NW+BAR_W+6, by=y+4;
+      barSvg+=`<rect x="${bx}" y="${by}" width="52" height="24" fill="#E8F5E9" rx="5"/>`;
+      barSvg+=`<text x="${bx+26}" y="${by+16}" text-anchor="middle" font-size="12" font-weight="800" fill="#155D32" font-family="Arial">↓${pct}%</text>`;
+    } else if(pct<0){
+      const bx=NW+BAR_W+6, by=y+4;
+      barSvg+=`<rect x="${bx}" y="${by}" width="52" height="24" fill="#FBE8D5" rx="5"/>`;
+      barSvg+=`<text x="${bx+26}" y="${by+16}" text-anchor="middle" font-size="12" font-weight="800" fill="#B45000" font-family="Arial">+${Math.abs(pct)}%</text>`;
+    }
+  });
+  // Legend
+  barSvg+=`<rect x="${NW}" y="${bH-16}" width="14" height="10" fill="#C41E3A" rx="2"/><text x="${NW+18}" y="${bH-7}" font-size="10" fill="#C41E3A" font-family="Arial">Drew Marine</text>`;
+  barSvg+=`<rect x="${NW+110}" y="${bH-16}" width="14" height="10" fill="#005DAA" rx="2"/><text x="${NW+128}" y="${bH-7}" font-size="10" fill="#005DAA" font-family="Arial">Wilhelmsen WSS</text>`;
+  barSvg+='</svg>';
+
+  // ── SVG CATEGORY CHART ──
+  const maxCatD=Math.max(...sortedCats.map(([,d])=>d.d));
+  const catH=sortedCats.length*42+40;
+  let catSvg=`<svg width="680" height="${catH}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
+  const catColors=['#C41E3A','#B45000','#7B3F00','#155D32','#005DAA','#5B2C6F','#0077A8','#37474F','#1A237E','#2E7D32'];
+  sortedCats.forEach(([cat,d],i)=>{
+    const y=i*42+20;
+    const dW=Math.max(2,(d.d/maxCatD)*380);
+    const wW=Math.max(2,(d.w/maxCatD)*380);
+    const pct=d.d>0?Math.round(((d.d-d.w)/d.d)*100):0;
+    const col=catColors[i%catColors.length];
+    catSvg+=`<text x="130" y="${y+12}" text-anchor="end" font-size="11" font-weight="700" fill="#333" font-family="Arial">${cat}</text>`;
+    catSvg+=`<rect x="135" y="${y}" width="${dW}" height="13" fill="#C41E3A" rx="2" opacity="0.85"/>`;
+    catSvg+=`<text x="${135+dW+5}" y="${y+11}" font-size="9" fill="#C41E3A" font-family="Arial">${Math.round(d.d).toLocaleString()} L</text>`;
+    catSvg+=`<rect x="135" y="${y+16}" width="${wW}" height="13" fill="#005DAA" rx="2" opacity="0.85"/>`;
+    catSvg+=`<text x="${135+wW+5}" y="${y+27}" font-size="9" fill="#005DAA" font-family="Arial">${Math.round(d.w).toLocaleString()} L</text>`;
+    if(pct>0){
+      catSvg+=`<rect x="535" y="${y+2}" width="48" height="22" fill="#E8F5E9" rx="5"/>`;
+      catSvg+=`<text x="559" y="${y+17}" text-anchor="middle" font-size="11" font-weight="800" fill="#155D32" font-family="Arial">↓${pct}%</text>`;
+    }
+  });
+  catSvg+='</svg>';
+
+  // ── SVG DONUT CHART (savings share by category) ──
+  const savCats=sortedCats.filter(([,d])=>d.d>d.w);
+  const totalCatSav=savCats.reduce((s,[,d])=>s+(d.d-d.w),0);
+  const DONUT_R=80, DONUT_IR=50, CX=100, CY=100;
+  let donutSvg=`<svg width="420" height="210" xmlns="http://www.w3.org/2000/svg">`;
+  const DONUT_COLORS=['#005DAA','#C41E3A','#155D32','#B8860B','#7B3F00','#5B2C6F','#0077A8','#37474F','#1565C0','#2E7D32'];
+  let angle=-Math.PI/2;
+  savCats.forEach(([cat,d],i)=>{
+    const share=(d.d-d.w)/totalCatSav;
+    const sweep=share*Math.PI*2;
+    const x1=CX+DONUT_R*Math.cos(angle), y1=CY+DONUT_R*Math.sin(angle);
+    angle+=sweep;
+    const x2=CX+DONUT_R*Math.cos(angle), y2=CY+DONUT_R*Math.sin(angle);
+    const xi1=CX+DONUT_IR*Math.cos(angle-sweep), yi1=CY+DONUT_IR*Math.sin(angle-sweep);
+    const xi2=CX+DONUT_IR*Math.cos(angle), yi2=CY+DONUT_IR*Math.sin(angle);
+    const lg=sweep>Math.PI?1:0;
+    const col=DONUT_COLORS[i%DONUT_COLORS.length];
+    donutSvg+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${DONUT_R},${DONUT_R} 0 ${lg},1 ${x2.toFixed(1)},${y2.toFixed(1)} L${xi2.toFixed(1)},${yi2.toFixed(1)} A${DONUT_IR},${DONUT_IR} 0 ${lg},0 ${xi1.toFixed(1)},${yi1.toFixed(1)} Z" fill="${col}" stroke="white" stroke-width="2"/>`;
+    // Legend
+    donutSvg+=`<rect x="215" y="${14+i*20}" width="12" height="12" fill="${col}" rx="2"/>`;
+    donutSvg+=`<text x="232" y="${24+i*20}" font-size="10" fill="#333" font-family="Arial">${cat} (${Math.round(share*100)}%)</text>`;
+  });
+  // Center label
+  donutSvg+=`<text x="${CX}" y="${CY-6}" text-anchor="middle" font-size="11" font-weight="700" fill="#333" font-family="Arial">Volume</text>`;
+  donutSvg+=`<text x="${CX}" y="${CY+8}" text-anchor="middle" font-size="11" font-weight="700" fill="#333" font-family="Arial">Saved</text>`;
+  donutSvg+=`<text x="${CX}" y="${CY+24}" text-anchor="middle" font-size="13" font-weight="900" fill="#155D32" font-family="Arial">${volPct}%</text>`;
+  donutSvg+='</svg>';
+
+  // ── BUILD HTML REPORT ──
+  const win=window.open('','_blank','width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>WSS Savings Report — Drew Marine vs Wilhelmsen</title>
+<style>
+@page{size:A4 portrait;margin:12mm 14mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:9.5px;color:#1a1a1a;-webkit-print-color-adjust:exact;print-color-adjust:exact;background:white}
+.page{max-width:780px;margin:0 auto;padding:0}
+/* Header */
+.hdr{background:linear-gradient(135deg,#003057,#005DAA);color:white;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-radius:0 0 12px 12px;margin-bottom:16px}
+.hdr-left{display:flex;align-items:center;gap:14px}
+.logo-box{width:52px;height:52px;background:#FFD700;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#003057;flex-shrink:0}
+.hdr h1{font-size:19px;font-weight:900;margin-bottom:2px}
+.hdr .sub{font-size:10px;opacity:.7}
+.hdr-right{text-align:right;font-size:9px;opacity:.65}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{border-radius:10px;padding:12px 10px;text-align:center}
+.stat .big{font-size:22px;font-weight:900;line-height:1.1;margin-bottom:3px}
+.stat .lbl{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
+.stat .sub-lbl{font-size:9px;margin-top:2px;opacity:.65}
+/* Section headers */
+.sec-title{font-size:13px;font-weight:900;color:#003057;text-transform:uppercase;letter-spacing:.06em;border-bottom:2.5px solid #003057;padding-bottom:5px;margin-bottom:12px;margin-top:20px}
+/* Charts */
+.chart-wrap{background:#F8F9FB;border-radius:10px;padding:14px;margin-bottom:16px}
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:8.5px;margin-bottom:16px}
+thead tr{background:#003057;color:white}
+th{padding:6px 8px;text-align:left;font-size:8.5px;font-weight:700;letter-spacing:.04em}
+td{padding:6px 8px;border-bottom:1px solid #E8ECEF;vertical-align:middle}
+tr:nth-child(even) td{background:#F8F9FB}
+.drew-name{font-weight:700;color:#C41E3A}
+.wss-name{font-weight:700;color:#005DAA}
+.cat-tag{background:#003057 15;color:#003057;padding:1px 6px;border-radius:3px;font-size:7.5px;font-weight:700}
+.saving-pos{color:#155D32;font-weight:800}
+.saving-neg{color:#B45000;font-weight:800}
+/* Two columns */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* Disclaimer */
+.disclaimer{background:#FFF8E1;border:1px solid #FFD700;border-radius:7px;padding:9px 12px;font-size:8.5px;color:#7A5200;line-height:1.5;margin-top:16px}
+/* Page break */
+.page-break{page-break-before:always;padding-top:16px}
+/* Footer */
+.footer{text-align:center;font-size:8px;color:#aaa;border-top:1px solid #ddd;padding-top:7px;margin-top:16px}
+/* Concentration badges */
+.conc-badge{display:inline-block;padding:2px 7px;border-radius:12px;font-size:8px;font-weight:700}
+</style></head><body><div class="page">
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="logo-box">W</div>
+    <div>
+      <h1>Chemical Savings Analysis</h1>
+      <div class="sub">Drew Marine → Wilhelmsen Ships Service (UNITOR™ / NALFLEET™)</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div style="font-size:11px;font-weight:700;color:#FFD700">CONFIDENTIAL</div>
+    <div>Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
+    <div>${items.length} products analysed</div>
+  </div>
+</div>
+
+<!-- ══ SUMMARY STATS ══ -->
+<div class="stats">
+  <div class="stat" style="background:linear-gradient(135deg,#E8F5E9,#C8E6C9);color:#155D32">
+    <div class="big" style="color:#155D32">${Math.round(volSaved).toLocaleString()} L</div>
+    <div class="lbl">Volume Saved / Year</div>
+    <div class="sub-lbl" style="color:#2E7D32;font-weight:700">${volPct}% less product</div>
+  </div>
+  <div class="stat" style="background:linear-gradient(135deg,#E3F2FD,#BBDEFB);color:#1565C0">
+    <div class="big" style="color:#1565C0">${pailSaved.toLocaleString()}</div>
+    <div class="lbl">Fewer Pails</div>
+    <div class="sub-lbl">less plastic on board</div>
+  </div>
+  <div class="stat" style="background:linear-gradient(135deg,#F3E5F5,#E1BEE7);color:#6A0080">
+    <div class="big" style="color:#6A0080">${co2Saved} t</div>
+    <div class="lbl">CO₂ Equivalent</div>
+    <div class="sub-lbl">from packaging reduction</div>
+  </div>
+  <div class="stat" style="background:${hasCost?'linear-gradient(135deg,#FFF9C4,#FFF176)':'linear-gradient(135deg,#F5F5F5,#EEE)'};color:${hasCost?'#7A5200':'#999'}">
+    <div class="big" style="color:${hasCost?'#7A5200':'#bbb'}">${hasCost?'$'+Math.round(costSaved).toLocaleString():'—'}</div>
+    <div class="lbl">Cost Saving</div>
+    <div class="sub-lbl">${hasCost?costPct+'% reduction vs Drew':'Add prices to calculate'}</div>
+  </div>
+</div>
+
+<!-- ══ PRODUCT BAR CHART ══ -->
+<div class="sec-title">Volume Comparison by Product</div>
+<div class="chart-wrap">
+  <div style="display:flex;gap:16px;margin-bottom:10px;font-size:9px">
+    <div style="display:flex;align-items:center;gap:4px"><div style="width:14px;height:10px;background:#C41E3A;border-radius:2px"></div><span style="color:#C41E3A;font-weight:700">Drew Marine (current)</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><div style="width:14px;height:10px;background:#005DAA;border-radius:2px"></div><span style="color:#005DAA;font-weight:700">Wilhelmsen WSS (proposed)</span></div>
+  </div>
+  ${barSvg}
+</div>
+
+<!-- ══ PAGE 2 ══ -->
+<div class="page-break">
+
+<!-- ══ CATEGORY BREAKDOWN ══ -->
+<div class="two-col">
+  <div>
+    <div class="sec-title">Savings by Category</div>
+    <div class="chart-wrap">
+      ${catSvg}
+    </div>
+  </div>
+  <div>
+    <div class="sec-title">Savings Distribution</div>
+    <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;min-height:200px">
+      ${donutSvg}
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETAILED TABLE ══ -->
+<div class="sec-title">Full Product Cross-Reference</div>
+<table>
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Drew Marine Product</th>
+      <th>WSS Equivalent</th>
+      <th>Drew Dosage</th>
+      <th>WSS Dosage</th>
+      <th>Conc.<br>Factor</th>
+      <th>Drew Vol.<br>(L/yr)</th>
+      <th>WSS Vol.<br>(L/yr)</th>
+      <th>Vol.<br>Saved</th>
+      ${hasCost?'<th>Cost<br>Saving</th>':''}
+    </tr>
+  </thead>
+  <tbody>
+    ${sortedItems.map(b=>{
+      const drewV=parseFloat(b.drewVol);
+      const wssV=drewV*b.prod.volRatio;
+      const saved=drewV-wssV;
+      const pct=Math.round((1-b.prod.volRatio)*100);
+      const cFactor=b.prod.volRatio<=0.55?`<span class="conc-badge" style="background:#E8F5E9;color:#155D32">${(1/b.prod.volRatio).toFixed(1)}× more conc.</span>`:
+                   b.prod.volRatio>=1.3?`<span class="conc-badge" style="background:#FBE8D5;color:#B45000">Higher dosage</span>`:
+                   `<span class="conc-badge" style="background:#F5F5F5;color:#666">Similar</span>`;
+      const rowCost=hasCost?(parseFloat(b.drewPrice)||0)*drewV-(parseFloat(b.wssPrice)||0)*wssV:0;
+      return `<tr>
+        <td><span class="cat-tag">${b.prod.cat}</span></td>
+        <td class="drew-name">${b.prod.drewProd}</td>
+        <td class="wss-name">${b.prod.wssProd}${b.prod.wssPart?` <span style="color:#aaa;font-family:monospace">#${b.prod.wssPart}</span>`:''}</td>
+        <td style="color:#555;font-size:8px">${b.prod.drewDose}</td>
+        <td style="color:#555;font-size:8px">${b.prod.wssDose}</td>
+        <td>${cFactor}</td>
+        <td style="font-weight:700;color:#C41E3A">${Math.round(drewV).toLocaleString()}</td>
+        <td style="font-weight:700;color:#005DAA">${Math.round(wssV).toLocaleString()}</td>
+        <td class="${pct>0?'saving-pos':pct<0?'saving-neg':''}">${pct>0?'↓ '+Math.round(saved).toLocaleString()+' L':pct<0?'↑ '+Math.round(-saved).toLocaleString()+' L':'—'}</td>
+        ${hasCost?`<td class="${rowCost>0?'saving-pos':rowCost<0?'saving-neg':''}">${rowCost!==0?'$'+Math.round(rowCost).toLocaleString():'—'}</td>`:''}
+      </tr>`;
+    }).join('')}
+    <tr style="background:#F0F4F8;font-weight:700;border-top:2px solid #003057">
+      <td colspan="6" style="font-weight:800;font-size:10px;color:#003057">TOTAL</td>
+      <td style="font-weight:800;color:#C41E3A">${Math.round(totalDrew).toLocaleString()}</td>
+      <td style="font-weight:800;color:#005DAA">${Math.round(totalWss).toLocaleString()}</td>
+      <td class="saving-pos" style="font-weight:800">↓ ${Math.round(volSaved).toLocaleString()} L (${volPct}%)</td>
+      ${hasCost?`<td class="saving-pos" style="font-weight:800">$${Math.round(costSaved).toLocaleString()} (${costPct}%)</td>`:''}
+    </tr>
+  </tbody>
+</table>
+
+<div class="disclaimer">
+  <strong>⚠ Note:</strong> Volume calculations are based on dosage ratios as specified in product technical data sheets. 
+  Actual consumption may vary by application, vessel size and operational conditions. 
+  Cost savings require verified pricing from your WSS account manager. 
+  Concentration factors reflect the dilution advantage of WSS products versus Drew Marine equivalents.
+  Contact Wilhelmsen Ships Service for a formal quotation.
+</div>
+
+<div class="footer">
+  Wilhelmsen Ships Service AS &nbsp;·&nbsp; UNITOR™ / NALFLEET™ &nbsp;·&nbsp; Drew Marine Competitor Cross-Reference &nbsp;·&nbsp; ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}
+</div>
+</div>
+</div>
+</body></html>`);
+  win.document.close();
+  win.onload=()=>setTimeout(()=>win.print(),500);
+}
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 stk=['home']; rp('home', hHome());
