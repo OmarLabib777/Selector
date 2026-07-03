@@ -281,9 +281,9 @@ const DB = {
     {param:'Applicable boilers',target:'All types up to 31 BarG',action:'LP, MP, and HP boilers. Use with or alongside main BWT.',unit:'BarG',lo:null,hi:31,icon:'ti-gauge'},
   ]},
 '777706':{brand:'NALFLEET',name:'Hardness Treatment',size:'25 LTR',p:'777706',col:WN,cat:'Boiler Water',
-  desc:'Chelant-based scale inhibitor for HP boilers above 42 BarG. Keeps hardness salts in solution. Primary scale control for Program C.',
-  feats:['Chelant-based scale control','HP rated above 42 BarG','No sludge formation','Keeps surfaces scale-free'],
-  specs:[['Pressure range','HP above 42 BarG only'],['Active ingredient','Chelating agent EDTA/NTA'],['Feedwater hardness','Target below 0.1 ppm CaCO3']],
+  desc:'Polymer-based scale inhibitor for HP boilers above 42 BarG. Controls hardness salts through threshold inhibition and crystal modification. Primary scale control for Program C. Not a chelant-based programme.',
+  feats:['Polymer-based scale control (not chelant)','HP rated above 42 BarG','Threshold inhibition — prevents crystal growth','Crystal modification — keeps scale soft and removable','No sludge formation'],
+  specs:[['Pressure range','HP above 42 BarG only'],['Mechanism','Polymer threshold inhibition + crystal modification'],['Feedwater hardness','Target below 0.1 ppm CaCO3'],['Programme','Program C — HP only']],
   dosage:'Dose continuously into feedline. Rate by feedwater hardness. Monitor with MaxiDirect MD600.',
   kit:'MaxiDirect MD600 (777180)',
   safety:'Mildly alkaline. Wear PPE.',
@@ -344,6 +344,38 @@ const DB = {
   kit:null,
   safety:'Handle reagents with care.',
   compat:'HP Program C.'},
+'777712':{brand:'NALFLEET',name:'Oxygen Scavenger 9-002',size:'25 LTR',p:'777712',col:WN,cat:'Boiler Water',
+  desc:'Highly effective liquid oxygen scavenger formulated with Carbohydrazide. Safer alternative to hydrazine — reduces handling risks with no added solids. Particularly suitable for HP boilers where oxygen corrosion is rapid and deposition of corrosion products can cause tube failure. Supersedes #777030.',
+  feats:['Carbohydrazide-based — safer alternative to hydrazine','No added solids — keeps treated water clean','Forms magnetite protective layer on boiler surfaces','Metal passivation — protects iron and copper','No special feeding equipment required','Suitable for all boiler pressures — particularly recommended for HP'],
+  specs:[['Active ingredient','Carbohydrazide'],['Appearance','Pale yellow liquid'],['Density','1.015–1.030 g/ml'],['pH','8.0–9.0'],['IMO classification','C-9'],['Dosing point','Deaerator storage or condenser extraction pump discharge'],['Control range','0.05–0.2 ppm (18–42 BarG)']],
+  dosage:'Add continuously via chemical pump at earliest point in feed system (deaerator storage or condenser extraction pump discharge). Can be fed neat or diluted with condensate or de-aerated water. Test with Spectrapak 312.',
+  kit:'Spectrapak 312 (#555490)',
+  safety:'Carbohydrazide — wear gloves and eye protection. Avoid contact with brass, carbon steel, nickel.',
+  compat:'Compatible: Aluminium, EPDM, Neoprene, PE, PP, PVC, SS 304 & 316, Teflon, Viton. NOT compatible with Brass, Carbon Steel, Nickel.'},
+'555490':{brand:'NALFLEET',name:'Spectrapak 312',size:'Test Kit',p:'555490',col:WN,cat:'Boiler Test Kits',
+  desc:'Hydrazine Upgrade Pack — add-on test kit for hydrazine-based oxygen scavengers. Recommended to ensure boiler water is free from dissolved oxygen. Compatible as an add-on to Spectrapak 311 and 315.',
+  feats:['Tests hydrazine-based oxygen scavengers','Range 0 to 0.5 mg/L','Compact and portable','Test method included in kit'],
+  specs:[['Test parameter','Hydrazine'],['Range','0 to 0.5 mg/L'],['Supplied with','Hydrazine Comparator Disc, Hydrazine Powder Pot, Measuring Scoop'],['Compatible with','Spectrapak 311 and 315 as add-on']],
+  dosage:'Use to verify boiler water is free from dissolved oxygen. Follow test method included in kit.',
+  kit:null,
+  safety:'Handle test reagents with care. Follow kit instructions.',
+  compat:'HP Program C. Add-on to Spectrapak 311 and 315.'},
+'777079':{brand:'NALFLEET',name:'Ecoscan Conductivity Meter MO347',size:'Meter',p:'777079',col:WN,cat:'Boiler Test Kits',
+  desc:'ECOSCAN CON 6+ conductivity meter and probe. Compact, portable, IP54 splashproof meter for testing boiler water, condensate water and engine cooling water. Multi-point push-button calibration with automatic temperature compensation. Supersedes #6006388.',
+  feats:['IP54 splashproof — protected against harsh field conditions','Multi-point calibration up to 5 points — ±1% full scale accuracy','Automatic Temperature Compensation (ATC)','Automatic or Manual calibration modes','Includes calibration kit with KCL standard solutions and deionised water'],
+  specs:[['Test parameter','Conductivity'],['Range','up to 199.9 mS/cm (multi-range)'],['Accuracy','±1% full scale'],['Calibration','Up to 5 points, automatic or manual'],['Protection','IP54 splashproof'],['Supplied with','COND 6+ Meter with Electrode ECCONSEN91B + Calibration Kit']],
+  dosage:'Calibrate before use with supplied KCL standard solutions. Rinse electrode with deionised water between samples.',
+  kit:null,
+  safety:'Electronic instrument — keep dry despite IP54 rating. Do not immerse.',
+  compat:'Boiler water, condensate water, engine cooling water.'},
+'777080':{brand:'NALFLEET',name:'Ecoscan pH6 Meter MO348',size:'Meter',p:'777080',col:WN,cat:'Boiler Test Kits',
+  desc:'ECOSCAN pH 6+ meter with single junction pH electrode and BNC connector. Compact, portable, IP54 splashproof meter for testing boiler water, condensate water and engine cooling water. High accuracy ±0.01 pH with automatic temperature compensation. Supersedes #6006389.',
+  feats:['IP54 splashproof rubber boot — protected against harsh field conditions','High accuracy ±0.01 pH','3-point push-button calibration with auto-buffer recognition','Automatic Temperature Compensation (ATC)','Self-diagnostic messages for easy troubleshooting','Choice of USA, NIST or pure water buffer standards'],
+  specs:[['Test parameter','pH'],['Range','0.00 to 14.00 pH'],['Accuracy','±0.01 pH'],['Calibration','3-point auto-buffer recognition'],['Protection','IP54 splashproof'],['Supplied with','pH 6+ Meter, Single Junction pH Electrode, ATC Electrode, pH Carrying Kit Set']],
+  dosage:'Calibrate with pH 4.01 and pH 7.00 buffer solutions before use. Store electrode in storage solution when not in use. Rinse with deionised water between samples.',
+  kit:null,
+  safety:'Electronic instrument — keep dry despite IP54 rating. Store pH electrode in storage solution to maintain accuracy.',
+  compat:'Boiler water, condensate water, engine cooling water.'},
 '571356':{brand:'NALFLEET',name:'Rocor NB Liquid',size:'25 LTR',p:'571356',col:WN,cat:'Cooling Water',
   desc:'Premium nitrite-based corrosion inhibitor for cooling systems with less than 10% aluminium.',
   feats:['Nitrite corrosion inhibitor','Tolyltriazole Cu/brass protection','Biocide anti-microbial','pH buffered 8.0-11.0'],
@@ -626,19 +658,27 @@ const DB = {
 ,
 
 // ── BALLAST WATER ─────────────────────────────────────────────────────────
-'777849':{brand:'NALFLEET',name:'Ballastguard STS 30',size:'25 LTR',p:'777849',col:'#2D4A8A',cat:'Ballast Water',
+'779162':{brand:'NALFLEET',name:'Ballastguard STS 30',size:'25 LTR',p:'779162',col:'#2D4A8A',cat:'Ballast Water',
   desc:'Thiosulphate-based liquid product specifically designed for ballast water treatment systems. Effectively neutralises Total Residual Oxidant (TRO) or Total Chlorine before discharge, ensuring compliance with environmental discharge standards. Equivalent to Sodium Thiosulphate Pentahydrate 50 wt%. Delivered with comprehensive SDS and proper labelling.',
-  feats:['Neutralises TRO and Total Chlorine from BWTS','IMO BWMC compliant discharge support','Equivalent to Sodium Thiosulphate Pentahydrate 50 wt%','Transfer into Ballast Water Dechlorination Chemical tank','Safe handling  -  full SDS and proper regulatory labelling'],
-  specs:[['Part number','777849'],['Size','25 LTR'],['Active ingredient','Sodium Thiosulphate Pentahydrate ~50 wt%'],['Function','TRO / Total Chlorine neutralisation'],['Application','BWTS dechlorination chemical tank'],['Standards','IMO Ballast Water Management Convention']],
+  feats:['Neutralises TRO and Total Chlorine from BWTS','Liquid product at 30% concentration for efficient neutralisation','Equivalent to Sodium Thiosulphate Pentahydrate 50 wt%','For electrochlorination and chlorination-based BWTS','Supplied in 25L pails for easy handling','Safe handling  -  full SDS and proper regulatory labelling'],
+  specs:[['Part number','779162'],['Size','25 LTR'],['Active ingredient','Sodium Thiosulphate  -  equivalent to Pentahydrate ~50 wt%'],['Concentration','30%'],['Appearance','Clear liquid'],['Density','1.265 - 1.285 g/ml'],['pH','6.9 to 9.5'],['IMO/EU classification','C-34'],['Function','TRO / Total Chlorine neutralisation'],['Application','BWTS dechlorination chemical tank']],
   dosage:'Transfer product into the Ballast Water Dechlorination Chemical tank. Follow all existing guidelines from your specific BWTS on operation and dosing rates.',
   kit:'Ballast Check 2 Test Kit (#777848)',
   safety:'Follow all BWTS operational guidelines. Wear gloves and eye protection during handling.',
-  compat:'All IMO-approved BWTS systems requiring TRO/chlorine neutralisation.'},
-'777850':{brand:'UNITOR',name:'Mud & Silt Remover',size:'25 LTR',p:'777850',col:'#2D4A8A',cat:'Ballast Water',
-  desc:'Liquid organic polyelectrolyte that breaks up the adhering force of mud and silt in ballast tanks, preventing heavy sediment accumulation. Ballast water loaded over time deposits mud and silt  -  if untreated, permanent ballast accumulates and creates breeding grounds for organisms that shield from BWTS treatment. Regular use keeps tanks compliant with IMO BWMC.',
-  feats:['Breaks up adhering mud and silt in ballast tanks','Prevents permanent ballast accumulation','Makes sediment flowing for removal during ballast exchange','Reduces organisms shielded from BWTS by sediment','Supports compliance with IMO Ballast Water Management Convention'],
-  specs:[['Part number','777850'],['Size','25 LTR'],['Type','Liquid organic polyelectrolyte'],['Dosage','10 litres per 100 tonnes ballast water'],['Contact time','24 hours minimum'],['Application','Add gradually while filling ballast tank']],
-  dosage:'Add 10 litres per 100 tonnes of ballast water gradually whilst filling to ensure thorough mixing. Use vessel rolling movements for agitation. Allow 24 hours contact time. Then exchange ballast with fresh seawater to flush out suspended sediment. Carry out ballast exchange per IMO and local port regulations.',
+  compat:'All IMO-approved electrochlorination and chlorination-based BWTS requiring TRO/chlorine neutralisation.'},
+'779166':{brand:'NALFLEET',name:'Ballastguard SBS 40',size:'25 LTR',p:'779166',col:'#2D4A8A',cat:'Ballast Water',
+  desc:'Bisulphite-based liquid product specifically designed for ballast water treatment systems. Effectively neutralises Total Residual Oxidant (TRO) or Total Chlorine, ensuring compliance with environmental discharge standards. Reliable performance in various ballast water treatment applications. Also available as 200 LTR drum (#779136). Properly labelled and supplied with Safety Data Sheet.',
+  feats:['Neutralises TRO and Total Chlorine from BWTS','Liquid product at 38-40% concentration for efficient neutralisation','For electrochlorination and chlorination-based BWTS','Liquid formulation simplifies application and handling','Also available in 200 LTR drum (#779136)','Safe handling  -  full SDS and proper regulatory labelling'],
+  specs:[['Part number','779166 (25 LTR)'],['Also available','200 LTR drum (#779136)'],['Active ingredient','Sodium Bisulphite'],['Concentration','38-40%'],['Appearance','Colourless liquid'],['Density','1.300 g/ml'],['pH','3.5 to 5.0'],['IMO/EU classification','C-34'],['Function','TRO / Total Chlorine neutralisation'],['Application','BWTS dechlorination chemical tank']],
+  dosage:'Transfer product into the Ballast Water Dechlorination Chemical tank. Follow all existing guidelines from your specific BWTS on operation and dosing rates.',
+  kit:'Ballast Check 2 Test Kit (#777848)',
+  safety:'Acidic solution (pH 3.5-5.0)  -  wear gloves and eye protection. Avoid contact with skin and eyes. Do not mix with oxidising chemicals.',
+  compat:'All IMO-approved electrochlorination and chlorination-based BWTS requiring TRO/chlorine neutralisation.'},
+'635326':{brand:'UNITOR',name:'Mud & Silt Remover',size:'25 LTR',p:'635326',col:'#2D4A8A',cat:'Ballast Water',
+  desc:'Liquid organic polyelectrolyte that breaks up the adhering force of mud and silt in ballast tanks, preventing heavy sediment accumulation. Ballast water loaded over time deposits mud and silt  -  if untreated, permanent ballast accumulates and creates breeding grounds for organisms that shield from BWTS treatment. Regular use keeps tanks compliant with IMO BWMC and supports IMO D2 performance standards.',
+  feats:['Breaks up adhering mud and silt in ballast tanks','Prevents permanent ballast accumulation','Binds sediment into free-flowing flocs for removal during ballast exchange','Reduces organisms shielded from BWTS by sediment','Meets MARPOL Annex V criteria  -  not harmful to the marine environment','Supports compliance with IMO Ballast Water Management Convention'],
+  specs:[['Part number','635326'],['Size','25 LTR'],['Type','Liquid organic polyelectrolyte'],['Cleaning dosage','10 litres per 100 tonnes ballast water'],['Maintenance dosage','2.5 litres per 100 tonnes each time tanks are ballasted'],['Contact time','24 hours minimum'],['Application','Add gradually while filling ballast tank']],
+  dosage:'Heavy accumulations: add 10 litres per 100 tonnes of ballast water gradually whilst filling to ensure thorough mixing. Use vessel rolling movements for agitation. Allow 24 hours contact time, then exchange ballast with fresh seawater to flush out suspended sediment. Maintenance: apply 2.5 litres per 100 tonnes each time tanks are ballasted. Heavy deposits may require several treatments or combined chemical and physical cleaning. Carry out ballast exchange per IMO and local port regulations.',
   kit:'Ballast Check 2 Test Kit (#777848)',
   safety:'Implement all confined space entry procedures when entering ballast tanks. Correct PPE required. Spillages create very slippery surfaces  -  clean immediately.',
   compat:'All ballast tanks. Ballast exchange per IMO and local regulations.'},
@@ -873,7 +913,7 @@ const DB = {
   dosage:'Set timer per BWTS dosing program requirements. Follow all BWTS operational guidelines and IMO BWMC requirements.',
   kit:'Ballast Check 2 Test Kit (#777848).',
   safety:'Electrical installation. Drum bund  -  ensure drum correctly seated. Follow BWTS operational guidelines.',
-  compat:'Ballastguard STS 30 (#777849), Mud & Silt Remover (#777850).'},
+  compat:'Ballastguard STS 30 (#779162), Ballastguard SBS 40 (#779166), Mud & Silt Remover (#635326).'},
 // ── DOSING EQUIPMENT  -  POTABLE WATER ─────────────────────────────────────
 '777318':{brand:'NALFLEET',name:'Potable Water Dosing System with Timer',size:'System',p:'777318',col:'#155D32',cat:'Potable Water',
   desc:'Pump and bund dosing system with timer functionality for potable water treatment chemical dosing. For controlled timed dosing of sodium hypochlorite and potable water stabiliser into freshwater tanks and systems. Safe chemical containment with drum bund.',
@@ -975,14 +1015,23 @@ const DB = {
   dosage:null,kit:null,
   safety:'ATEX Zone 1  -  use bonding/grounding set #635662 for flammable liquids. Follow SOPEP emergency procedures.',
   compat:'ATEX Zone 1. Bonding Ground Set #635662. Hose Kit #770215.'},
-'ballastguard-smbs':{brand:'NALFLEET',name:'Ballastguard SMBS Solid 25 kg',size:'25 KG',p:'',col:'#2D4A8A',cat:'Ballast Water',
+'779214':{brand:'NALFLEET',name:'Ballastguard SMBS Solid',size:'25 KG',p:'779214',col:'#2D4A8A',cat:'Ballast Water',
   desc:'Sodium metabisulphite (SMBS) solid product specifically designed for ballast water treatment systems. Neutralises Total Residual Oxidant (TRO) or Total Chlorine to ensure compliance with environmental discharge regulations. Powder concentration greater than 97%. Ideal for electrochlorination and chlorination-based BWTS. Supplied in 25 kg bag.',
   feats:['Sodium metabisulphite (SMBS)  -  greater than 97% concentration','Neutralises TRO and Total Chlorine from BWTS discharge','For electrochlorination and chlorination-based BWTS','High concentration solid  -  powerful and efficient treatment','25 kg bag for easy handling and storage'],
-  specs:[['Size','25 kg bag'],['Active ingredient','Sodium metabisulphite (Na2S2O5) greater than 97%'],['Form','Solid powder'],['Function','TRO / Total Chlorine neutralisation'],['BWTS type','Electrochlorination and chlorination-based systems']],
+  specs:[['Part number','779214'],['Size','25 kg bag'],['Active ingredient','Sodium metabisulphite (Na2S2O5)'],['Purity','greater than 97%'],['Appearance','Powder form'],['Density','1.48'],['Function','TRO / Total Chlorine neutralisation'],['BWTS type','Electrochlorination and chlorination-based systems']],
   dosage:'Dissolve per BWTS manufacturer guidelines. Feed into dechlorination system. Dose rate depends on TRO/chlorine concentration and system flow rate.',
   kit:'Ballast Check 2 Test Kit (#777848)',
   safety:'Irritant powder  -  wear gloves, eye protection, and dust mask. Avoid inhalation. Keep dry  -  reacts with moisture to release SO2 gas. Store in cool dry place.',
   compat:'Electrochlorination and chlorination-based ballast water treatment systems.'}
+,
+'779212':{brand:'NALFLEET',name:'Ballastguard STS Solid',size:'25 KG',p:'779212',col:'#2D4A8A',cat:'Ballast Water',
+  desc:'Highly effective solid neutraliser used in Ballast Water Management Systems to ensure compliance with discharge regulations by neutralising excess chlorine and oxidant residuals. Composed of Sodium Thiosulphate Pentahydrate in solid form with high solubility for quick and efficient application. Critical consumable for maintaining efficiency and compliance of BWMS operations.',
+  feats:['Sodium Thiosulphate Pentahydrate in solid form','Neutralises excess chlorine and oxidants before discharge','High solubility  -  quick and efficient application','Meets IMO and USCG discharge water standards','Supplied in 25 kg bags (23 kg bags in the USA)'],
+  specs:[['Part number','779212'],['Size','25 kg bag (23 kg in USA)'],['Active ingredient','Sodium Thiosulphate Pentahydrate'],['Form','Solid'],['Solubility','Readily soluble in water'],['Function','Chlorine / oxidant residual neutralisation'],['Standards','IMO and USCG discharge water standards']],
+  dosage:'Dissolve per BWTS manufacturer guidelines. Feed into dechlorination system. Dose rate depends on TRO/chlorine concentration and system flow rate.',
+  kit:'Ballast Check 2 Test Kit (#777848)',
+  safety:'Wear gloves and eye protection during handling. Store in a cool dry place.',
+  compat:'Ballast Water Management Systems using chlorination or electrochlorination disinfection.'}
 ,
 // ── EVAPORATOR CHEMICALS ─────────────────────────────────────────────────
 '571364':{brand:'NALFLEET',name:'Vaptreat',size:'25 LTR',p:'571364',col:'#0077A8',cat:'Evaporator',
@@ -1033,7 +1082,7 @@ const DB = {
   dosage:'Set timer per treatment program requirements. Follow BWTS and bilge system operational guidelines.',
   kit:'Ballast Check 2 Test Kit (#777848), TRO Calibration Kit (#779211).',
   safety:'Electrical installation  -  ensure dry and secure. Drum bund  -  ensure drum correctly seated. Follow all safety guidelines.',
-  compat:'Ballastguard STS 30 (#777849), Ballastguard SMBS Solid, Bilge Water Flocculant, Defoamer Concentrate.'},
+  compat:'Ballastguard STS 30 (#779162), Ballastguard SBS 40 (#779166), Ballastguard SMBS Solid (#779214), Ballastguard STS Solid (#779212), Bilge Water Flocculant, Defoamer Concentrate.'},
 '779211':{brand:'NALFLEET',name:'TRO Calibration Kit',size:'Kit',p:'779211',col:'#2D4A8A',cat:'Ballast Test Kits',
   desc:'Essential calibration package for chlorination/oxidation type ballast water management systems. TRO (Total Residual Oxidant) sensor calibration ensures the right amount of chlorine/oxidant is injected for disinfection and excess is neutralised for compliance. Designed for use with HF Scientific TRO analyser models CLX-EX, CLX-EX2, CLX-XT, CLX-XT2.',
   feats:['Essential for BWTS TRO sensor calibration','Ensures correct chlorine/oxidant injection levels','Ensures excess TRO is neutralised for discharge compliance','For HF Scientific CLX-EX, CLX-EX2, CLX-XT, CLX-XT2','Complete kit with buffer reagent, indicator, and DPD powder'],
@@ -1279,32 +1328,119 @@ const DB = {
 // ── BOILER WIZARD DATA ─────────────────────────────────────────────────────
 const BWD = {
 'lp-true':{prog:'A',label:'LP below 18 BarG - Distilled',col:WB,
-  ch:[{n:'Autotreat',p:'698720',pr:'Must have',d:'Continuous'},{n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},{n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As needed'}],
+  ch:[
+    {n:'Autotreat',p:'698720',pr:'Must have',d:'Continuous'},
+    {n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},
+    {n:'Condensate Control',p:'774828',pr:'Good to have',d:'As need, condensate pH low'},
+    {n:'Alkalinity Control',p:'571307',pr:'Good to have',d:'As need, when increasing Autotreat not able to increase boiler pH'},
+    {n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As need, oil leak/high spike in boiler hardness not able to remove by blowdown'}
+  ],
   tk:[{n:'Spectrapak 310',p:'739490',pr:'Must Have'},{n:'DEHA CHECKIT',p:'698948',pr:'Must Have'}]},
 'lp-false':{prog:'D',label:'LP below 18 BarG - Non-distilled',col:WB,
-  ch:[{n:'BWT Liquid Plus',p:'777701',pr:'Must have',d:'Continuous'},{n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},{n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As needed'}],
+  ch:[
+    {n:'BWT Liquid Plus',p:'777701',pr:'Must have',d:'Continuous'},
+    {n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},
+    {n:'Condensate Control',p:'774828',pr:'Must have',d:'As need, condensate pH low'},
+    {n:'Alkalinity Control',p:'571307',pr:'Good to have',d:'As need, when increasing BWT not able to increase boiler pH'},
+    {n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As need, oil leak/high spike in boiler hardness not able to remove by blowdown'}
+  ],
   tk:[{n:'Spectrapak 310',p:'739490',pr:'Must Have'},{n:'DEHA CHECKIT',p:'698948',pr:'Must Have'}]},
 'mp1-true':{prog:'A',label:'MP 18-31 BarG - Distilled',col:'#1A5C8A',
-  ch:[{n:'Autotreat',p:'698720',pr:'Must have',d:'Continuous'},{n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'}],
-  tk:[{n:'Spectrapak 310',p:'739490',pr:'Must Have'},{n:'DEHA CHECKIT',p:'698948',pr:'Must Have'}]},
+  ch:[
+    {n:'Autotreat',p:'698720',pr:'Must have',d:'Continuous'},
+    {n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},
+    {n:'Condensate Control',p:'774828',pr:'Good to have',d:'As need, condensate pH low'},
+    {n:'Alkalinity Control',p:'571307',pr:'Good to have',d:'As need, when increasing Autotreat not able to increase boiler pH'},
+    {n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As need, oil leak/high spike in boiler hardness not able to remove by blowdown'}
+  ],
+  tk:[
+    {n:'Spectrapak 310',p:'739490',pr:'Must Have'},
+    {n:'DEHA CHECKIT',p:'698948',pr:'Must Have'},
+    {n:'Phosphate Disc 0-80 mg/l',p:'555583',pr:'Good to have'},
+    {n:'Phosphate Tablets (2 Bottles x 100)',p:'555649',pr:'Good to have'}
+  ]},
 'mp1-false':{prog:'D',label:'MP 18-31 BarG - Non-distilled',col:'#1A5C8A',
-  ch:[{n:'BWT Liquid Plus',p:'777701',pr:'Must have',d:'Continuous'},{n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'}],
-  tk:[{n:'Spectrapak 310',p:'739490',pr:'Must Have'},{n:'DEHA CHECKIT',p:'698948',pr:'Must Have'}]},
+  ch:[
+    {n:'BWT Liquid Plus',p:'777701',pr:'Must have',d:'Continuous'},
+    {n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},
+    {n:'Condensate Control',p:'774828',pr:'Must have',d:'As need, condensate pH low'},
+    {n:'Alkalinity Control',p:'571307',pr:'Good to have',d:'As need, when increasing BWT not able to increase boiler pH'},
+    {n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As need, oil leak/high spike in boiler hardness not able to remove by blowdown'}
+  ],
+  tk:[
+    {n:'Spectrapak 310',p:'739490',pr:'Must Have'},
+    {n:'DEHA CHECKIT',p:'698948',pr:'Must Have'},
+    {n:'Phosphate Disc 0-80 mg/l',p:'555583',pr:'Good to have'},
+    {n:'Phosphate Tablets (2 Bottles x 100)',p:'555649',pr:'Good to have'}
+  ]},
 'mp2-true':{prog:'B',label:'MP 31-42 BarG - Distilled',col:'#0B4F6C',
-  ch:[{n:'BWT Liquid Plus',p:'777701',pr:'Must have',d:'Continuous'},{n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},{n:'Condensate Treatment',p:'777702',pr:'Must have',d:'Continuous'}],
-  tk:[{n:'Spectrapak 310',p:'739490',pr:'Must Have'},{n:'DEHA CHECKIT',p:'698948',pr:'Must Have'}]},
+  ch:[
+    {n:'BWT Liquid Plus',p:'777701',pr:'Must have',d:'Continuous'},
+    {n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},
+    {n:'Condensate Treatment',p:'777702',pr:'Must have',d:'Continuous'},
+    {n:'Alkalinity Control',p:'571307',pr:'Good to have',d:'As need, when increasing BWT not able to increase boiler pH'},
+    {n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As need, oil leak/high spike in boiler hardness not able to remove by blowdown'}
+  ],
+  tk:[
+    {n:'Spectrapak 310',p:'739490',pr:'Must Have'},
+    {n:'DEHA CHECKIT',p:'698948',pr:'Must Have'},
+    {n:'Phosphate DISC 3/70',p:'555573',pr:'Good to have'},
+    {n:'Phosphate Tablets (2 Bottles x 100)',p:'555649',pr:'Good to have'}
+  ]},
 'hp-true':{prog:'C',label:'HP above 42 BarG - Distilled',col:'#7B241C',
-  ch:[{n:'Hardness Treatment',p:'777706',pr:'Must have',d:'Continuous'},{n:'Oxygen Scavenger Plus',p:'698712',pr:'Must have',d:'Continuous'},{n:'Condensate Treatment',p:'777702',pr:'Must have',d:'Continuous'}],
-  tk:[{n:'MaxiDirect MD600',p:'777180',pr:'Must Have'},{n:'pH Meter Pen',p:'607800',pr:'Must Have'},{n:'Conductivity Meter Pen',p:'607801',pr:'Must Have'}]}
+  ch:[
+    {n:'Hardness Treatment',p:'777706',pr:'Must have',d:'Continuous'},
+    {n:'Oxygen Scavenger 9-002',p:'777712',pr:'Must have',d:'Continuous'},
+    {n:'Condensate Treatment',p:'777702',pr:'Must have',d:'Continuous'},
+    {n:'Alkalinity Control',p:'571307',pr:'Good to have',d:'As need, ONLY when increasing Hardness Treatment not able to increase boiler pH'},
+    {n:'Boiler Coagulant',p:'571331',pr:'Good to have',d:'As need, oil leak/high spike in boiler hardness not able to remove by blowdown'}
+  ],
+  tk:[
+    {n:'MaxiDirect MD600',p:'777180',pr:'Must Have'},
+    {n:'PH Meter Pen Model',p:'607800',pr:'Must Have'},
+    {n:'Conductivity Meter Pen Model',p:'607801',pr:'Must Have'},
+    {n:'Phosphate HR P1 & P2 Repl. Pac',p:'729541',pr:'Must Have'},
+    {n:'Chloride T1 Tablet',p:'666661',pr:'Must Have'},
+    {n:'Chloride T2 Tablet',p:'666663',pr:'Must Have'},
+    {n:'Silica Photometer MO406 0-8 PPM (50 Tests)',p:'777184',pr:'Must Have'},
+    {n:'Oxygen Full Kit 0-40 PPB O2 M341',p:'777060',pr:'Must Have'},
+    {n:'Iron Photometer MO404 0-2 PPM',p:'777182',pr:'Must Have'},
+    {n:'Vario Hydrazine 2 Reagent PCK 100 PCS',p:'666665',pr:'Must Have'},
+    {n:'Copper No.1 Tablets (100)',p:'778646',pr:'Good to have'},
+    {n:'Copper 2 Tablets Reagent PCK 100 PCS',p:'666667',pr:'Good to have'},
+    {n:'Ammonia Photometer MO407 0-1 PPM',p:'777185',pr:'Good to have'}
+  ]}
 };
 
 // ── COOLING WATER DATA ────────────────────────────────────────────────────
 const CWD = [
-  {id:'rocor',col:WB,name:'Rocor NB Liquid',type:'Nitrite Based',al:'Al below 10%',ch:[{n:'Rocor NB Liquid 25 LTR',p:'571356',pr:'Must have',d:'AquaGuard CW or expansion tank'}],tk:[{n:'Spectrapak 309',p:'739466',pr:'Must Have',note:'Nitrite, Cl, pH'}]},
-  {id:'nalf',col:'#1A5C8A',name:'Nalfleet 2000',type:'Nitrite Based',al:'Al above 10%',ch:[{n:'Nalfleet 2000 25 LTR',p:'777710',pr:'Must have',d:'AquaGuard CW or expansion tank'}],tk:[{n:'Motor Ship Test Kit MO246A',p:'777066',pr:'Must Have',note:'Nitrite, Cl, p-Alk'}]},
-  {id:'ctal',col:'#0B4F6C',name:'Cooltreat AL',type:'Non-Nitrite OAT',al:'All metallurgy',ch:[{n:'Cooltreat AL 25 litres',p:'680843',pr:'Must have',d:'AquaGuard CW or expansion tank'}],tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'OAT conc, Cl, pH'}]},
-  {id:'ctelc',col:'#154360',name:'Cooltreat ELC Anti-Freeze',type:'Non-Nitrite + Antifreeze',al:'All metallurgy',ch:[{n:'Cooltreat ELC 25 litres',p:'779030',pr:'Must have',d:'AquaGuard CW or expansion tank'}],tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'OAT conc, Cl, pH'}]}
+  {id:'rocor',col:WB,name:'Rocor NB Liquid',type:'Nitrite Based',al:'Al below 10%',ch:[{n:'Rocor NB Liquid 25 LTR',p:'571356',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],tk:[{n:'Spectrapak 309',p:'739466',pr:'Must Have',note:'Nitrite, Chloride, pH'}]},
+  {id:'nalf',col:'#1A5C8A',name:'Nalfleet 2000',type:'Nitrite Based',al:'Al above 10%',ch:[{n:'Nalfleet 2000 25 LTR',p:'777710',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],tk:[{n:'Motor Ship Test Kit MO246A',p:'777066',pr:'Must Have',note:'Nitrite, Chloride, p-Alkalinity'},{n:'PH Paper',p:'555698',pr:'Must Have',note:'pH'}]},
+  {id:'ctal',col:'#0B4F6C',name:'Cooltreat AL',type:'Non-Nitrite OAT',al:'All metallurgy',ch:[{n:'Cooltreat AL 25 litres',p:'680843',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'Cooltreat AL concentration, Chloride, pH'}]},
+  {id:'ctelc',col:'#154360',name:'Cooltreat ELC Anti-Freeze',type:'Non-Nitrite + Antifreeze',al:'All metallurgy',ch:[{n:'Cooltreat ELC (Anti-Freeze) 25 litres',p:'779030',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'Cooltreat AL concentration, Chloride, pH'},{n:'Glycol Refractometer RHA 218 ATC',p:'555814',pr:'Optional',note:'Determine glycol concentration of engine coolants and other anti-freeze solutions'}]}
 ];
+
+// Cooling Water Wizard data — keyed by al-nitrite[-af]
+const CWWD = {
+  'lt10-nitrite':{label:'Al < 10% — Nitrite Based',col:WB,
+    ch:[{n:'Rocor NB Liquid 25 LTR',p:'571356',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],
+    tk:[{n:'Spectrapak 309',p:'739466',pr:'Must Have',note:'Nitrite, Chloride, pH'}]},
+  'gt10-nitrite':{label:'Al ≥ 10% — Nitrite Based',col:'#1A5C8A',
+    ch:[{n:'Nalfleet 2000 25 LTR',p:'777710',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],
+    tk:[{n:'Motor Ship Test Kit MO246A',p:'777066',pr:'Must Have',note:'Nitrite, Chloride, p-Alkalinity'},{n:'PH Paper',p:'555698',pr:'Must Have',note:'pH'}]},
+  'lt10-nnitrite':{label:'Al < 10% — Non-Nitrite Based',col:'#0B4F6C',
+    ch:[{n:'Cooltreat AL 25 litres',p:'680843',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],
+    tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'Cooltreat AL concentration, Chloride, pH'}]},
+  'gt10-nnitrite':{label:'Al ≥ 10% — Non-Nitrite Based',col:'#0B4F6C',
+    ch:[{n:'Cooltreat AL 25 litres',p:'680843',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],
+    tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'Cooltreat AL concentration, Chloride, pH'}]},
+  'lt10-nnitrite-af':{label:'Al < 10% — Non-Nitrite + Antifreeze',col:'#154360',
+    ch:[{n:'Cooltreat ELC (Anti-Freeze) 25 litres',p:'779030',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],
+    tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'Cooltreat AL concentration, Chloride, pH'},{n:'Glycol Refractometer RHA 218 ATC',p:'555814',pr:'Optional',note:'Determine glycol concentration of engine coolants and other anti-freeze solutions'}]},
+  'gt10-nnitrite-af':{label:'Al ≥ 10% — Non-Nitrite + Antifreeze',col:'#154360',
+    ch:[{n:'Cooltreat ELC (Anti-Freeze) 25 litres',p:'779030',pr:'Must have',d:'AquaGuard CW dosing unit (#777336) or dose manually into expansion tank'}],
+    tk:[{n:'Test Kit for Cooltreat AL',p:'758904',pr:'Must Have',note:'Cooltreat AL concentration, Chloride, pH'},{n:'Glycol Refractometer RHA 218 ATC',p:'555814',pr:'Optional',note:'Determine glycol concentration of engine coolants and other anti-freeze solutions'}]},
+};
 
 // ── SECTION LISTS ─────────────────────────────────────────────────────────
 const CLS = [
@@ -1415,8 +1551,8 @@ const ALLP=[
   {n:'Trolley for 40-50L Gas Cylinder',p:'778147',c:'Gas Equipment'},
 
   // Ballast Water
-  {n:'Ballastguard STS 30',p:'777849',c:'Ballast Water'},
-  {n:'Mud & Silt Remover',p:'777850',c:'Ballast Water'},
+  {n:'Ballastguard STS 30',p:'779162',c:'Ballast Water'},{n:'Ballastguard SBS 40',p:'779166',c:'Ballast Water'},{n:'Ballastguard STS Solid 25kg',p:'779212',c:'Ballast Water'},
+  {n:'Mud & Silt Remover',p:'635326',c:'Ballast Water'},
   {n:'Ballast Check 2 Test Kit',p:'777848',c:'Ballast Test Kits'},
   {n:'Intestinal Enterococci Test 20 tests',p:'778420',c:'Ballast Test Kits'},
   // Potable Water
@@ -1468,7 +1604,7 @@ const ALLP=[
   {n:'AeroFlow Pump 1 inch ALU ATEX Z1',p:'635635',c:'Cleaning Equipment'},
   {n:'AeroFlow Pump 2 inch SS',p:'635640',c:'Cleaning Equipment'},
   {n:'AeroFlow Pump 2 inch ALU ATEX Z1',p:'635645',c:'Cleaning Equipment'},
-  {n:'Ballastguard SMBS Solid 25kg',p:'',c:'Ballast Water'},
+  {n:'Ballastguard SMBS Solid 25kg',p:'779214',c:'Ballast Water'},
 
   // Evaporator
   {n:'Vaptreat',p:'571364',c:'Evaporator'},{n:'Evaporator Defoamer',p:'638676',c:'Evaporator'},
@@ -2183,7 +2319,8 @@ function sd(v){
 function sBR(p,d){
   const k=p+'-'+d,dat=BWD[k];if(!dat)return;
   const el=document.getElementById('b-res');if(!el)return;
-  el.innerHTML=`<div class="rbar" style="background:${dat.col}">
+  el.innerHTML=`
+  <div class="rbar" style="background:${dat.col}">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div><div style="display:flex;gap:6px;align-items:center;margin-bottom:3px"><span class="ppill">Program ${dat.prog}</span><span style="font-size:12px;font-weight:600;color:#fff">${dat.label}</span></div>
       <div style="font-size:11px;color:rgba(255,255,255,.65)">Tap any product for full details.</div></div>
@@ -2193,6 +2330,12 @@ function sBR(p,d){
   <div class="card" style="border-radius:0 0 var(--r14) var(--r14);padding:2px 0;margin-bottom:8px;border-top:none">
     <div style="padding:9px 14px 3px"><span class="stit">Chemicals</span></div>${dat.ch.map(it=>pRow(it)).join('')}
     <div style="padding:9px 14px 3px;border-top:1px solid var(--border)"><span class="stit">Test kits</span></div>${dat.tk.map(it=>pRow(it)).join('')}
+    ${(p==='mp2'||p==='hp')?`<div style="padding:8px 14px 10px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--text3);font-style:italic;line-height:1.5">
+        <i class="ti ti-info-circle" style="font-size:11px;vertical-align:-1px;margin-right:3px"></i>
+        Program ${dat.prog} applies to distilled feedwater. For non-distilled feedwater at this pressure, consult your local Technical Sales Manager.
+      </div>
+    </div>`:''}
   </div>`;
 }
 function rb(){
@@ -2202,33 +2345,102 @@ function rb(){
   const s=document.getElementById('bs2');if(s)s.style.display='none';
   const r=document.getElementById('b-res');if(r)r.innerHTML='';
 }
+var cwal=null, cwni=null, cwaf=null;
+
 function hCWiz(){
   return `<div class="shdr">
     <button class="sbk" onclick="goBack()"><i class="ti ti-arrow-left" style="font-size:13px"></i> Water Treatment</button>
     <div class="str"><div class="sico" style="background:var(--accent-bg)"><i class="ti ti-snowflake" style="font-size:17px;color:var(--accent)" aria-hidden="true"></i></div>
-    <div><div class="snm">Cooling Water</div><div class="sds">Select your treatment program</div></div></div>
+    <div><div class="snm">Cooling Water Wizard</div><div class="sds">Select system type to find your program</div></div></div>
   </div>
   <div style="padding:12px">
-    <div class="icard">Select a program and tap any product for full specifications.</div>
-    ${CWD.map(pr=>`
-    <div class="cww">
-      <div class="cwh ${oc===pr.id?'on':''}" onclick="tCW('${pr.id}')">
-        <div style="flex:1"><div class="cwt">${pr.name}</div>
-          <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
-            <span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;${oc!==pr.id?`background:${pr.col}20;color:${pr.col}`:'background:rgba(255,255,255,.2);color:#fff'}">${pr.type}</span>
-            <span style="font-size:9px;font-weight:500;padding:2px 6px;border-radius:4px;${oc!==pr.id?'background:var(--bg4);color:var(--text3)':'background:rgba(255,255,255,.15);color:rgba(255,255,255,.8)'}">${pr.al}</span>
-          </div>
-        </div>
-        <i class="ti ti-chevron-right" style="font-size:15px;color:${oc===pr.id?'#fff':'var(--text3)'};transition:transform .2s;transform:${oc===pr.id?'rotate(90deg)':'none'}" aria-hidden="true"></i>
+    <div class="icard">Answer the questions below to find the correct WSS cooling water treatment program.</div>
+    <div style="margin-bottom:8px">
+      <div class="stit" style="padding:0 2px">Aluminium content in system?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button class="wbtn" onclick="scal('lt10')" id="cw-lt10"><span>Below 10%</span><span class="dot"></span></button>
+        <button class="wbtn" onclick="scal('gt10')" id="cw-gt10"><span>10% or above</span><span class="dot"></span></button>
       </div>
-      ${oc===pr.id?`<div class="cwb"><div class="dlbl">Chemical</div>${pr.ch.map(it=>pRow(it)).join('')}
-        <div class="dlbl" style="border-top:1px solid var(--border)">Test kits</div>${pr.tk.map(it=>pRow(it)).join('')}
-        <div class="tip">Flush system with Commissioning Cleaner (624932) before starting a new treatment program.</div>
-      </div>`:''}
-    </div>`).join('')}
+    </div>
+    <div id="cw-s2" style="display:none;margin-bottom:8px">
+      <div class="stit" style="padding:0 2px">Treatment type?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button class="wbtn" onclick="scni('nitrite')"  id="cw-nitrite"><span>Nitrite-based</span><span class="dot"></span></button>
+        <button class="wbtn" onclick="scni('nnitrite')" id="cw-nnitrite"><span>Non-nitrite (OAT)</span><span class="dot"></span></button>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:5px;padding:0 2px">Non-nitrite OAT inhibitors suit all metallurgy including aluminium. Nitrite-based requires stricter control but is widely used.</div>
+    </div>
+    <div id="cw-s3" style="display:none;margin-bottom:8px">
+      <div class="stit" style="padding:0 2px">Antifreeze protection required?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button class="wbtn" onclick="scaf(false)" id="cw-af-n"><span>No antifreeze</span><span class="dot"></span></button>
+        <button class="wbtn" onclick="scaf(true)"  id="cw-af-y"><span>Antifreeze needed</span><span class="dot"></span></button>
+      </div>
+    </div>
+    <div id="cw-res"></div>
   </div>`;
 }
+
+function scal(v){
+  cwal=v; cwni=null; cwaf=null;
+  ['lt10','gt10'].forEach(id=>{const b=document.getElementById('cw-'+id);if(b)b.classList.toggle('on',id===v);});
+  ['nitrite','nnitrite'].forEach(id=>{const b=document.getElementById('cw-'+id);if(b)b.classList.remove('on');});
+  const s2=document.getElementById('cw-s2');if(s2)s2.style.display='block';
+  const s3=document.getElementById('cw-s3');if(s3)s3.style.display='none';
+  const res=document.getElementById('cw-res');if(res)res.innerHTML='';
+}
+
+function scni(v){
+  cwni=v; cwaf=null;
+  ['nitrite','nnitrite'].forEach(id=>{const b=document.getElementById('cw-'+id);if(b)b.classList.toggle('on',id===v);});
+  const s3=document.getElementById('cw-s3');if(s3)s3.style.display=v==='nnitrite'?'block':'none';
+  if(v==='nitrite'){cwaf=false;sCWR();}
+  else{const res=document.getElementById('cw-res');if(res)res.innerHTML='';}
+}
+
+function scaf(v){
+  cwaf=v;
+  const by=document.getElementById('cw-af-y'),bn=document.getElementById('cw-af-n');
+  if(by)by.classList.toggle('on',v===true);
+  if(bn)bn.classList.toggle('on',v===false);
+  sCWR();
+}
+
+function sCWR(){
+  if(!cwal||!cwni)return;
+  if(cwni==='nnitrite'&&cwaf===null)return;
+  const key=cwal+'-'+cwni+(cwni==='nnitrite'&&cwaf?'-af':'');
+  const dat=CWWD[key];if(!dat)return;
+  const el=document.getElementById('cw-res');if(!el)return;
+  el.innerHTML=`
+  <div class="rbar" style="background:${dat.col}">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px">${dat.label}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.65)">Tap any product for full details.</div>
+      </div>
+      <button class="rstb" onclick="cwReset()">Reset</button>
+    </div>
+  </div>
+  <div class="card" style="border-radius:0 0 var(--r14) var(--r14);padding:2px 0;margin-bottom:8px;border-top:none">
+    <div style="padding:9px 14px 3px"><span class="stit">Chemical</span></div>${dat.ch.map(it=>pRow(it)).join('')}
+    <div style="padding:9px 14px 3px;border-top:1px solid var(--border)"><span class="stit">Test kit</span></div>${dat.tk.map(it=>pRow(it)).join('')}
+    <div style="padding:8px 14px 10px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;color:var(--text3);font-style:italic;line-height:1.5">
+        <i class="ti ti-info-circle" style="font-size:11px;vertical-align:-1px;margin-right:3px"></i>
+        Flush system with Commissioning Cleaner (#624932) before starting a new treatment program.
+      </div>
+    </div>
+  </div>`;
+}
+
+function cwReset(){
+  cwal=null;cwni=null;cwaf=null;
+  const ap=pw.querySelector('.pg.active');if(ap)ap.innerHTML=hCWiz();
+}
+
 function tCW(id){oc=oc===id?null:id;const ap=pw.querySelector('.pg.active');if(ap)ap.innerHTML=hCWiz();}
+
 
 // ── CLEANING ──────────────────────────────────────────────────────────────────
 function hCL(){
@@ -4343,13 +4555,21 @@ function nbiStepWater() {
     </div>
 
     ${NBI.boilerPressure && NBI.boilerPressure!=='none' ? `
+    ${NBI.boilerPressure==='hp' ? `
+    <div style="background:#FFF8E1;border:1px solid #FFD700;border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">
+      <i class="ti ti-alert-triangle" style="font-size:14px;color:#B8860B;flex-shrink:0;margin-top:1px"></i>
+      <div style="font-size:11px;color:#7A5200;line-height:1.5">
+        <strong>HP (>42 BarG) — Program C:</strong> Distilled feedwater only. Non-distilled is not applicable for HP boilers.<br>
+        <strong style="color:#7B241C">⚠ KAM must consult TSM Water or SME before making any offer.</strong>
+      </div>
+    </div>` : `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">
       ${nbiQ('Feedwater type?','')}
       ${nbiOpts('bf',[
         {v:'distilled',    l:'Distilled',     s:'Condensate / evaporator'},
         {v:'non-distilled',l:'Non-distilled',  s:'River / municipal water'},
       ],NBI.boilerFeedwater,"nbiO_bf")}
-    </div>
+    </div>`}
 
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">
       ${nbiQ('Number of boilers?','')}
@@ -4379,23 +4599,29 @@ function nbiWaterProducts() {
   const bp = NBI.boilerPressure, bf = NBI.boilerFeedwater, bc = parseInt(NBI.boilerCount)||1;
   if(bp && bp!=='none') {
     if(bp==='lp'  && bf==='distilled')     prods.push({p:'698720',name:'Autotreat',brand:'UNITOR',qty:bc,note:'Program A — LP boiler, distilled'});
-    if(bp==='lp'  && bf==='non-distilled') prods.push({p:'697888',name:'Combitreat',brand:'NALFLEET',qty:bc,note:'Program D — LP boiler, non-distilled'});
+    if(bp==='lp'  && bf==='non-distilled') prods.push({p:'777701',name:'BWT Liquid Plus',brand:'NALFLEET',qty:bc,note:'Program D — LP boiler, non-distilled'});
     if(bp==='mp1' && bf==='distilled')     prods.push({p:'698720',name:'Autotreat',brand:'UNITOR',qty:bc,note:'Program A — MP boiler, distilled'});
-    if(bp==='mp1' && bf==='non-distilled') prods.push({p:'697888',name:'Combitreat',brand:'NALFLEET',qty:bc,note:'Program D — MP boiler, non-distilled'});
-    if(bp==='mp2') prods.push({p:'697953',name:'Liquidtreat',brand:'UNITOR',qty:bc,note:'Program B — MP 31-42 BarG'});
-    if(bp==='hp')  prods.push({p:'698001',name:'Maxitreat',brand:'UNITOR',qty:bc,note:'Program C — HP > 42 BarG'});
-    // Oxygen scavenger for all boilers
-    prods.push({p:'698752',name:'Oxygen Scavenger Plus',brand:'UNITOR',qty:bc,note:'DEHA oxygen scavenger — all boiler types'});
-    // Test kit
-    prods.push({p:'739490',name:'Spectrapak 310',brand:'UNITOR',qty:1,note:'Boiler water test kit'});
+    if(bp==='mp1' && bf==='non-distilled') prods.push({p:'777701',name:'BWT Liquid Plus',brand:'NALFLEET',qty:bc,note:'Program D — MP boiler, non-distilled'});
+    if(bp==='mp2') prods.push({p:'777701',name:'BWT Liquid Plus',brand:'NALFLEET',qty:bc,note:'Program B — MP 31-42 BarG (distilled feedwater)'},{p:'777702',name:'Condensate Treatment',brand:'NALFLEET',qty:bc,note:'Program B — continuous condensate treatment'});
+    if(bp==='hp')  prods.push({p:'777706',name:'Hardness Treatment',brand:'NALFLEET',qty:bc,note:'Program C — HP > 42 BarG (distilled feedwater only)'},{p:'777702',name:'Condensate Treatment',brand:'NALFLEET',qty:bc,note:'Program C — continuous condensate treatment'});
+    // Oxygen scavenger — HP gets 9-002, others get Plus
+    if(bp==='hp') prods.push({p:'777712',name:'Oxygen Scavenger 9-002',brand:'NALFLEET',qty:bc,note:'Recommended O2 scavenger for HP Program C'});
+    else prods.push({p:'698712',name:'Oxygen Scavenger Plus',brand:'UNITOR',qty:bc,note:'DEHA oxygen scavenger — all LP/MP boiler programs'});
+    // Test kit — HP gets MaxiDirect MD600 kit
+    if(bp==='hp'){
+      prods.push({p:'777180',name:'MaxiDirect MD600',brand:'UNITOR',qty:1,note:'HP boiler water test kit'});
+    } else {
+      prods.push({p:'739490',name:'Spectrapak 310',brand:'UNITOR',qty:1,note:'Boiler water test kit'},{p:'698948',name:'DEHA CHECKIT',brand:'UNITOR',qty:1,note:'DEHA test — all LP/MP boiler programs'});
+    }
   }
   if(NBI.coolingAl==='<10') {
-    prods.push({p:'740002',name:'Rocor NB Liquid',brand:'NALFLEET',qty:1,note:'Cooling water treatment — < 10% Al'});
-    prods.push({p:'739466',name:'Spectrapak 309',brand:'UNITOR',qty:1,note:'Cooling water test kit'});
+    prods.push({p:'571356',name:'Rocor NB Liquid',brand:'NALFLEET',qty:1,note:'Cooling water treatment — < 10% Al'});
+    prods.push({p:'739466',name:'Spectrapak 309',brand:'UNITOR',qty:1,note:'Cooling water test kit — Nitrite, Chloride, pH'});
   }
   if(NBI.coolingAl==='>10') {
     prods.push({p:'777710',name:'Nalfleet 2000',brand:'NALFLEET',qty:1,note:'Cooling water — ≥ 10% aluminium systems'});
-    prods.push({p:'739466',name:'Spectrapak 309',brand:'UNITOR',qty:1,note:'Cooling water test kit'});
+    prods.push({p:'777066',name:'Motor Ship Test Kit MO246A',brand:'UNITOR',qty:1,note:'Cooling water test kit — Nitrite, Chloride, p-Alkalinity'});
+    prods.push({p:'555698',name:'PH Paper',brand:'UNITOR',qty:1,note:'pH check'});
   }
   if(NBI.hasPool) {
     prods.push({p:'',name:'Pool Treatment Chemicals',brand:'NALFLEET',qty:1,note:'Pool / Spa water treatment package'});
@@ -4894,7 +5120,7 @@ Kind regards`
 
 
 // ── NBI NAMED TOGGLE HANDLERS ─────────────────────────────────────────────────
-function nbiO_bp(v){NBI.boilerPressure=v;nbiRefresh();}
+function nbiO_bp(v){NBI.boilerPressure=v;if(v==='hp')NBI.boilerFeedwater='distilled';nbiRefresh();}
 function nbiO_bf(v){NBI.boilerFeedwater=v;nbiRefresh();}
 function nbiO_bc(v){NBI.boilerCount=v;nbiRefresh();}
 function nbiO_ca(v){NBI.coolingAl=v;nbiRefresh();}
